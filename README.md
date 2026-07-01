@@ -151,6 +151,28 @@ npm run dev
 
 ---
 
+## Sécurité — SentinelGuard (Pôle 2)
+
+Le module sécurité est accessible via le **dashboard admin** (`/dashboard`).
+
+**Micro-pare-feu applicatif** ([`server/firewall.js`](NeoStream/server/firewall.js)) : chaque requête HTTP est filtrée **avant Next.js**, au point d'entrée du serveur custom :
+- **Liste noire d'IP** (table `BlockedIP`, mise en cache 15 s) → `403`.
+- **Rate-limit** par IP (100 req / 10 s) → `429`.
+- Les IP locales de confiance (`::1`, `127.0.0.1`, réseaux privés) ne sont **jamais** filtrées : le pare-feu ne peut pas casser la démo ni verrouiller l'admin.
+
+> **Démo du blocage** (sans se verrouiller soi-même) : dans le dashboard, lancer le scénario **« Accès IP bloquée »** (ajoute `185.220.101.1` à la liste noire), puis depuis un terminal :
+> ```bash
+> curl -i -H "X-Forwarded-For: 185.220.101.1" http://localhost:3000/dashboard   # -> 403 (pare-feu)
+> for i in $(seq 1 130); do curl -s -o /dev/null -H "X-Forwarded-For: 9.9.9.9" http://localhost:3000/; done  # -> 429 après ~100 req
+> ```
+> En production derrière un vrai proxy, on ne ferait confiance qu'à l'IP du proxy (et non au `X-Forwarded-For` client).
+
+**Détections** : connexions simultanées (IP distinctes), VPN/Proxy (via `ip-api.com`, réel), tentatives de capture d'écran (heuristiques navigateur), le tout journalisé dans `SecurityLog` et visible en temps réel.
+
+**Journal démo vs réel** : le **simulateur** de menaces marque ses événements comme **« Démo »** (`metadata.simulated`) ; les vraies détections apparaissent en **« Réel »**. Le journal permet de filtrer par source et de **purger uniquement les logs réels** (bouton avec confirmation) tout en conservant l'historique de démonstration.
+
+---
+
 ## Analyse d'audience (Pôle 3)
 
 Le module `video_analytics/` (Streamlit + scikit-learn) analyse les **vraies** données de visionnage de Watch Together : zones d'ennui et prédiction de rétention.

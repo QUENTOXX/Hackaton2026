@@ -5,7 +5,7 @@ import { requireAdmin } from '@/lib/guard'
 
 export const dynamic = 'force-dynamic'
 
-const THREAT_TYPES = ['SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP']
+const THREAT_TYPES = ['SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'RATE_LIMIT']
 
 export async function GET() {
   const auth = await requireAdmin()

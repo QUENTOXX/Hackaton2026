@@ -112,6 +112,16 @@ export function DashboardClient({ email, name }: { email: string; name: string |
     } catch { toast.error('Erreur réseau.') }
   }, [fetchAll, filter])
 
+  const handlePurge = useCallback(async () => {
+    try {
+      const res = await fetch('/api/security/logs', { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) toast.success(`Journal purgé : ${data?.deleted ?? 0} log(s) réel(s) supprimé(s), ${data?.kept ?? 0} démo conservé(s).`)
+      else toast.error('Échec de la purge du journal.')
+      await fetchAll(filter)
+    } catch { toast.error('Erreur réseau.') }
+  }, [fetchAll, filter])
+
   const handleSimulate = useCallback(async (scenario: string) => {
     setSimBusy(true)
     try {
@@ -211,7 +221,7 @@ export function DashboardClient({ email, name }: { email: string; name: string |
           </TabsContent>
 
           <TabsContent value="logs" className="mt-4">
-            <LogsTable logs={logs} filter={filter} onFilter={setFilter} />
+            <LogsTable logs={logs} filter={filter} onFilter={setFilter} onPurge={handlePurge} />
           </TabsContent>
 
           <TabsContent value="blocked" className="mt-4">

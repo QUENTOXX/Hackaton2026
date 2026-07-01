@@ -2,6 +2,10 @@
 // Simulateur de menaces (pour la démonstration).
 // Permet à l'administrateur de générer des événements de test
 // sans avoir besoin de plusieurs vrais appareils.
+//
+// Chaque événement produit ici est marqué `metadata.simulated = true` :
+// il apparaît avec un badge « Démo » dans le journal, se distingue des
+// vraies détections (« Réel »), et est PRÉSERVÉ lors de la purge des logs.
 // =====================================================================
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
@@ -61,7 +65,7 @@ export async function POST(req: NextRequest) {
       ipAddress: a.ip,
       location: a.loc,
       userId: demoUser.id,
-      metadata: { ips: [a.ip, b.ip] },
+      metadata: { simulated: true, ips: [a.ip, b.ip] },
     })
     return NextResponse.json({ success: true, message: 'Connexions simultanées simulées.' })
   }
@@ -86,7 +90,7 @@ export async function POST(req: NextRequest) {
       ipAddress: s.ip,
       location: rep.location || s.loc,
       userId: demoUser.id,
-      metadata: { proxy: rep.proxy, hosting: rep.hosting, isp: rep.isp },
+      metadata: { simulated: true, proxy: rep.proxy, hosting: rep.hosting, isp: rep.isp },
     })
     return NextResponse.json({ success: true, message: 'Connexion VPN/Proxy simulée.' })
   }
@@ -99,7 +103,7 @@ export async function POST(req: NextRequest) {
       ipAddress: DEMO_IPS[3].ip,
       location: DEMO_IPS[3].loc,
       userId: demoUser.id,
-      metadata: { method: 'PrintScreen' },
+      metadata: { simulated: true, method: 'PrintScreen' },
     })
     return NextResponse.json({ success: true, message: "Tentative de capture d'écran simulée." })
   }
@@ -118,9 +122,10 @@ export async function POST(req: NextRequest) {
       ipAddress: s.ip,
       location: s.loc,
       userId: demoUser.id,
+      metadata: { simulated: true },
     })
-    return NextResponse.json({ success: true, message: 'Accs depuis IP bloque simul.' })
+    return NextResponse.json({ success: true, message: 'Accès depuis une IP bloquée simulé.' })
   }
 
-  return NextResponse.json({ error: 'Scnario inconnu.' }, { status: 400 })
+  return NextResponse.json({ error: 'Scénario inconnu.' }, { status: 400 })
 }

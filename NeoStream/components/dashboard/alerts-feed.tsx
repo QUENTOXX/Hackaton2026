@@ -14,6 +14,7 @@ export interface LogItem {
   ipAddress: string | null
   location: string | null
   userEmail: string | null
+  simulated?: boolean
   createdAt: string
 }
 
@@ -45,7 +46,12 @@ export function AlertsFeed({ logs }: { logs: LogItem[] }) {
                     <Icon className="mt-0.5 h-4 w-4 shrink-0" />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-xs font-semibold uppercase tracking-wide">{THREAT_LABELS[l.type] ?? l.type}</span>
+                        <span className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide">
+                          {THREAT_LABELS[l.type] ?? l.type}
+                          {l.simulated && (
+                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[9px] font-medium text-violet-300 ring-1 ring-violet-500/30">Démo</span>
+                          )}
+                        </span>
                         <span className="shrink-0 text-[10px] font-medium opacity-80">{SEVERITY_LABELS[l.severity] ?? l.severity}</span>
                       </div>
                       <p className="mt-0.5 text-sm text-foreground/90">{l.message}</p>

@@ -10,6 +10,7 @@ export type ThreatType =
   | 'VPN_PROXY'
   | 'SCREENSHOT_ATTEMPT'
   | 'BLOCKED_IP'
+  | 'RATE_LIMIT'
   | 'LOGIN'
   | 'INFO'
 
@@ -21,6 +22,7 @@ export const THREAT_LABELS: Record<string, string> = {
   VPN_PROXY: 'VPN / Proxy',
   SCREENSHOT_ATTEMPT: "Capture d'écran",
   BLOCKED_IP: 'IP bloquée',
+  RATE_LIMIT: 'Rate-limit (pare-feu)',
   LOGIN: 'Connexion',
   INFO: 'Information',
 }

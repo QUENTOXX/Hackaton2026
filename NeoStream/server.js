@@ -27,6 +27,7 @@ const { parse: parseCookie } = require('cookie')
 const { PrismaClient } = require('@prisma/client')
 
 const store = require('./server/room-store')
+const firewall = require('./server/firewall')
 
 const hostname = process.env.HOSTNAME || 'localhost'
 const port = parseInt(process.env.PORT || '3000', 10)
@@ -112,6 +113,8 @@ function endRoom(io, room, reason = 'host') {
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
+    // Pare-feu applicatif : liste noire d'IP + rate-limit, AVANT Next.
+    if (firewall.guard(req, res, prisma)) return
     handle(req, res, parse(req.url, true))
   })
 
