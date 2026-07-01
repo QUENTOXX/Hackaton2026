@@ -6,13 +6,32 @@
 // cette API ne gère que la persistance (création, listing).
 // =====================================================================
 import { NextResponse } from 'next/server'
+import { readdir } from 'fs/promises'
+import path from 'path'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/guard'
 
-// Source par défaut : flux HLS de TEST public (nécessite Internet).
-// TODO J2 : remplacer par le HLS local '/hls/demo/index.m3u8'.
-const DEFAULT_VIDEO =
+// Repli si aucune vidéo locale n'est présente : flux HLS de TEST (Internet requis).
+const FALLBACK_VIDEO =
   process.env.WATCH_DEFAULT_HLS || 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8'
+
+const VIDEO_EXT = ['.mp4', '.webm', '.ogg', '.mov', '.m3u8']
+
+// Vidéo par défaut : 1re vidéo déposée dans public/videos/ (ex. video_test.mp4),
+// sinon on retombe sur le flux de test. Évite de dépendre d'Internet en démo.
+async function defaultVideoSrc(): Promise<string> {
+  try {
+    const dir = path.join(process.cwd(), 'public', 'videos')
+    const files = await readdir(dir)
+    const first = files
+      .filter((f) => VIDEO_EXT.includes(path.extname(f).toLowerCase()))
+      .sort()[0]
+    if (first) return `/videos/${encodeURIComponent(first)}`
+  } catch {
+    // dossier absent -> repli
+  }
+  return FALLBACK_VIDEO
+}
 
 // Codes lisibles (sans caractères ambigus : 0/O, 1/I).
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -62,7 +81,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}))
   const name = String(body?.name || '').trim() || 'Session de visionnage'
-  const videoSrc = String(body?.videoSrc || '').trim() || DEFAULT_VIDEO
+  const videoSrc = String(body?.videoSrc || '').trim() || (await defaultVideoSrc())
 
   const code = await uniqueCode()
   const room = await prisma.room.create({

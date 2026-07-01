@@ -61,6 +61,22 @@ function recordPlayback(room, userId, type, positionSec) {
     .catch((e) => console.error('[log] playbackEvent', e.message))
 }
 
+// Tentative de capture d'écran dans une salle : journalisée comme menace
+// (severity 'medium'), enrichie du contexte salle pour le dashboard Pôle 2.
+function logScreenshotAttempt(room, userId, name, method) {
+  prisma.securityLog
+    .create({
+      data: {
+        type: 'SCREENSHOT_ATTEMPT',
+        severity: 'medium',
+        message: `Tentative de capture d'écran (${method}) — ${name} · salle ${room.code}`,
+        userId: userId || null,
+        metadata: { roomCode: room.code, roomId: room.roomId, method },
+      },
+    })
+    .catch((e) => console.error('[log] screenshot', e.message))
+}
+
 function endRoom(io, room, reason = 'host') {
   if (room.hostGraceTimer) {
     clearTimeout(room.hostGraceTimer)
@@ -224,6 +240,22 @@ app.prepare().then(() => {
       room.videoSrc = String(videoSrc)
       room.playback = { state: 'paused', positionSec: 0, updatedAt: Date.now() }
       io.to(room.code).emit('room:videoChanged', { videoSrc: room.videoSrc })
+    })
+
+    // --- Tentative de capture d'écran (tous les participants sont surveillés) ---
+    socket.on('screenshot:attempt', ({ method } = {}) => {
+      const room = store.getRoom(socket.data.roomCode)
+      if (!room) return
+      const m = String(method || 'inconnue')
+      logScreenshotAttempt(room, user.id, displayName, m)
+      // Alerte live au présentateur (sauf s'il est lui-même l'auteur).
+      if (room.hostSocketId && user.id !== room.hostId) {
+        io.to(room.hostSocketId).emit('room:screenshotAlert', {
+          name: displayName,
+          method: m,
+          at: Date.now(),
+        })
+      }
     })
 
     // --- Le présentateur ferme la salle ---

@@ -52,6 +52,7 @@ export const EV = {
   PRESENTER_SEEK: 'presenter:seek',
   PRESENTER_LOAD: 'presenter:loadVideo',
   PRESENTER_END: 'presenter:endRoom',
+  SCREENSHOT_ATTEMPT: 'screenshot:attempt',
   // --- serveur -> client ---
   SYNC_PLAY: 'sync:play',
   SYNC_PAUSE: 'sync:pause',
@@ -61,8 +62,16 @@ export const EV = {
   ROOM_HOST_RECONNECTED: 'room:hostReconnected',
   ROOM_HOST_CHANGED: 'room:hostChanged',
   ROOM_VIDEO_CHANGED: 'room:videoChanged',
+  ROOM_SCREENSHOT_ALERT: 'room:screenshotAlert',
   ROOM_ENDED: 'room:ended',
 } as const
+
+/** Alerte envoyée au présentateur quand un invité tente une capture d'écran. */
+export interface ScreenshotAlert {
+  name: string
+  method: string
+  at: number
+}
 
 /** Réponse au ping de diagnostic. */
 export interface PongPayload {

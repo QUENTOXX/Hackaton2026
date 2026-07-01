@@ -8,3 +8,6 @@ anti_fraud_local_ready/public/videos/*
 /video_test.mp4
 /Local_Video/
 claude.md
+video_analytics/
+venv/
+__pycache__/

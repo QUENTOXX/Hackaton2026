@@ -68,7 +68,9 @@ export function DashboardClient({ email, name }: { email: string; name: string |
       setBlockedIps(bData?.blockedIps ?? [])
 
       // Notification en direct si une nouvelle menace apparaît
-      const topThreat = newLogs.find((l) => l.type !== 'LOGIN' && l.type !== 'INFO')
+      const topThreat = newLogs.find(
+        (l) => l.type !== 'LOGIN' && l.type !== 'INFO' && !l.type.startsWith('ROOM_'),
+      )
       if (topThreat) {
         if (!firstLoad.current && topThreat.id !== lastThreatId.current) {
           toast.error(`Nouvelle menace : ${THREAT_LABELS[topThreat.type] ?? topThreat.type}`, {

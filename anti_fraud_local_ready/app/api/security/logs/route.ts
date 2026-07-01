@@ -13,8 +13,17 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '60', 10) || 60, 200)
   const type = searchParams.get('type')
 
+  // Le filtre "WATCH" regroupe tous les événements de salle Watch Together.
+  const ROOM_TYPES = ['ROOM_CREATED', 'ROOM_JOIN', 'ROOM_LEAVE', 'ROOM_ENDED', 'ROOM_HOST_CHANGED']
+  const where =
+    !type || type === 'ALL'
+      ? undefined
+      : type === 'WATCH'
+        ? { type: { in: ROOM_TYPES } }
+        : { type }
+
   const logs = await prisma.securityLog.findMany({
-    where: type && type !== 'ALL' ? { type } : undefined,
+    where,
     orderBy: { createdAt: 'desc' },
     take: limit,
     include: { user: { select: { email: true } } },

@@ -8,7 +8,7 @@ import { THREAT_LABELS, THREAT_ICONS, SEVERITY_LABELS, SEVERITY_STYLES, formatDa
 import type { LogItem } from './alerts-feed'
 import { FileText, Info } from 'lucide-react'
 
-const FILTERS = ['ALL', 'SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'LOGIN']
+const FILTERS = ['ALL', 'SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'LOGIN', 'WATCH']
 
 export function LogsTable({
   logs, filter, onFilter,

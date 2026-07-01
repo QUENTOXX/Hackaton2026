@@ -9,6 +9,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { signOut } from 'next-auth/react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { useScreenshotGuard } from '@/hooks/use-screenshot-guard'
 import { Logo } from '@/components/brand/logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
@@ -77,31 +78,8 @@ export function ProtectedClient({ email, name, role }: { email: string; name: st
     } catch {}
   }, [])
 
-  useEffect(() => {
-    // Touche "Impr. écran" + raccourcis macOS (Cmd+Shift+3/4/5) + Windows (Win+Shift+S approx.)
-    function onKey(e: KeyboardEvent) {
-      const key = e.key
-      if (key === 'PrintScreen') {
-        reportScreenshot('Touche Impr. écran')
-      } else if (e.metaKey && e.shiftKey && ['3', '4', '5'].includes(key)) {
-        reportScreenshot('Raccourci macOS (Cmd+Shift+' + key + ')')
-      } else if (e.shiftKey && (e.metaKey || e.ctrlKey) && key.toLowerCase() === 's') {
-        reportScreenshot('Raccourci capture (Maj+Cmd/Ctrl+S)')
-      }
-    }
-    // Impression (Ctrl+P / Cmd+P) — souvent utilisée pour exfiltrer du contenu
-    function onBeforePrint() {
-      reportScreenshot('Impression de la page')
-    }
-    window.addEventListener('keyup', onKey)
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('beforeprint', onBeforePrint)
-    return () => {
-      window.removeEventListener('keyup', onKey)
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('beforeprint', onBeforePrint)
-    }
-  }, [reportScreenshot])
+  // Surveillance des captures d'écran (logique partagée avec Watch Together).
+  useScreenshotGuard(reportScreenshot)
 
   const hasThreat = alerts.length > 0 || blocked
 

@@ -12,7 +12,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useSocket } from '@/hooks/use-socket'
-import { EV, type JoinAck, type Participant, type RoomState } from '@/lib/realtime/socket-events'
+import { useScreenshotGuard } from '@/hooks/use-screenshot-guard'
+import { EV, type JoinAck, type Participant, type RoomState, type ScreenshotAlert } from '@/lib/realtime/socket-events'
 import { HlsPlayer } from '@/components/watch/hls-player'
 import { YouTubePlayer } from '@/components/watch/youtube-player'
 import { getYouTubeId, type PlayerHandle } from '@/components/watch/player-types'
@@ -21,7 +22,7 @@ import { Logo } from '@/components/brand/logo'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Crown, Radio, Wifi, WifiOff, PowerOff } from 'lucide-react'
+import { ArrowLeft, Crown, Radio, Wifi, WifiOff, PowerOff, ShieldAlert, Camera } from 'lucide-react'
 
 export function RoomClient({ code, currentUserId }: { code: string; currentUserId: string }) {
   const router = useRouter()
@@ -33,6 +34,7 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
   const [isHost, setIsHost] = useState(false)
   const [notFound, setNotFound] = useState(false)
   const [hostNotice, setHostNotice] = useState<string | null>(null)
+  const [screenshotAlerts, setScreenshotAlerts] = useState<ScreenshotAlert[]>([])
 
   // Applique un état de lecture initial (join / join tardif).
   const applyInitial = useCallback((state: RoomState) => {
@@ -75,6 +77,10 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
       setHostNotice(null)
       toast.info(iAmHost ? 'Vous êtes désormais le présentateur.' : `${hostName} est désormais présentateur.`)
     }
+    const onScreenshotAlert = (a: ScreenshotAlert) => {
+      setScreenshotAlerts((prev) => [a, ...prev].slice(0, 20))
+      toast.warning(`${a.name} a tenté une capture d'écran (${a.method}).`)
+    }
     const onEnded = ({ reason }: { reason?: string } = {}) => {
       const msg =
         reason === 'inactivity'
@@ -95,6 +101,7 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
     socket.on(EV.ROOM_HOST_DISCONNECTED, onHostDisconnected)
     socket.on(EV.ROOM_HOST_RECONNECTED, onHostReconnected)
     socket.on(EV.ROOM_HOST_CHANGED, onHostChanged)
+    socket.on(EV.ROOM_SCREENSHOT_ALERT, onScreenshotAlert)
     socket.on(EV.ROOM_ENDED, onEnded)
 
     return () => {
@@ -106,6 +113,7 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
       socket.off(EV.ROOM_HOST_DISCONNECTED, onHostDisconnected)
       socket.off(EV.ROOM_HOST_RECONNECTED, onHostReconnected)
       socket.off(EV.ROOM_HOST_CHANGED, onHostChanged)
+      socket.off(EV.ROOM_SCREENSHOT_ALERT, onScreenshotAlert)
       socket.off(EV.ROOM_ENDED, onEnded)
     }
   }, [socket, connected, code, currentUserId, applyInitial, router])
@@ -114,6 +122,16 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
   const onHostPlay = (positionSec: number) => socket?.emit(EV.PRESENTER_PLAY, { positionSec })
   const onHostPause = (positionSec: number) => socket?.emit(EV.PRESENTER_PAUSE, { positionSec })
   const onHostSeek = (positionSec: number) => socket?.emit(EV.PRESENTER_SEEK, { positionSec })
+
+  // --- Surveillance capture d'écran : toast local + remontée au serveur ---
+  const reportScreenshot = useCallback(
+    (method: string) => {
+      toast.error(`Tentative de capture d'écran détectée (${method}) — enregistrée.`)
+      socket?.emit(EV.SCREENSHOT_ATTEMPT, { method })
+    },
+    [socket],
+  )
+  useScreenshotGuard(reportScreenshot)
 
   function endSession() {
     if (!socket) return
@@ -229,7 +247,58 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
             </Card>
           </div>
 
-          <ParticipantsList participants={participants} currentUserId={currentUserId} />
+          <div className="space-y-4">
+            <ParticipantsList participants={participants} currentUserId={currentUserId} />
+
+            {/* Panneau sécurité : surveillance des captures d'écran */}
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center justify-between text-base">
+                  <span className="flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-primary" /> Sécurité
+                  </span>
+                  {isHost && screenshotAlerts.length > 0 && (
+                    <Badge variant="destructive" className="gap-1">
+                      <Camera className="h-3 w-3" /> {screenshotAlerts.length}
+                    </Badge>
+                  )}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                <p className="flex items-center gap-1.5 text-xs">
+                  <ShieldAlert className="h-3.5 w-3.5 text-emerald-400" />
+                  Surveillance des captures d’écran active.
+                </p>
+
+                {isHost ? (
+                  screenshotAlerts.length === 0 ? (
+                    <p className="mt-2 text-xs">Aucune tentative détectée pour l’instant.</p>
+                  ) : (
+                    <ul className="mt-3 space-y-1.5">
+                      {screenshotAlerts.map((a, i) => (
+                        <li
+                          key={`${a.at}-${i}`}
+                          className="flex items-start gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 py-1.5 text-xs text-red-200"
+                        >
+                          <Camera className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>
+                            <span className="font-medium text-foreground">{a.name}</span> — {a.method}
+                            <span className="ml-1 font-mono text-[10px] opacity-70">
+                              {new Date(a.at).toLocaleTimeString('fr-FR')}
+                            </span>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                ) : (
+                  <p className="mt-2 text-xs">
+                    Toute tentative de capture est signalée au présentateur et journalisée.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </main>

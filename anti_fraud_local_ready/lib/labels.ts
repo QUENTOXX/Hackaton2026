@@ -1,6 +1,9 @@
 // Constantes partagées côté client (libellés français + couleurs des menaces).
 // Ce fichier n'importe PAS prisma : il peut être utilisé dans les composants client.
-import { ShieldAlert, Wifi, Camera, Ban, LogIn, Info, type LucideIcon } from 'lucide-react'
+import {
+  ShieldAlert, Wifi, Camera, Ban, LogIn, Info,
+  Radio, LogOut, PowerOff, Crown, type LucideIcon,
+} from 'lucide-react'
 
 export const THREAT_LABELS: Record<string, string> = {
   SIMULTANEOUS_LOGIN: 'Connexion simultanée',
@@ -9,6 +12,13 @@ export const THREAT_LABELS: Record<string, string> = {
   BLOCKED_IP: 'IP bloquée',
   LOGIN: 'Connexion',
   INFO: 'Information',
+  // --- Watch Together (événements de salle) ---
+  WATCH: 'Watch Together',
+  ROOM_CREATED: 'Salle créée',
+  ROOM_JOIN: 'Entrée en salle',
+  ROOM_LEAVE: 'Sortie de salle',
+  ROOM_ENDED: 'Salle terminée',
+  ROOM_HOST_CHANGED: 'Changement de présentateur',
 }
 
 export const THREAT_ICONS: Record<string, LucideIcon> = {
@@ -18,6 +28,13 @@ export const THREAT_ICONS: Record<string, LucideIcon> = {
   BLOCKED_IP: Ban,
   LOGIN: LogIn,
   INFO: Info,
+  // --- Watch Together ---
+  WATCH: Radio,
+  ROOM_CREATED: Radio,
+  ROOM_JOIN: LogIn,
+  ROOM_LEAVE: LogOut,
+  ROOM_ENDED: PowerOff,
+  ROOM_HOST_CHANGED: Crown,
 }
 
 export const SEVERITY_LABELS: Record<string, string> = {
