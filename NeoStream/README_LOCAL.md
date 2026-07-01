@@ -1,4 +1,4 @@
-# Lancer SentinelGuard en local
+# Lancer NeoStream en local
 
 Ce dossier est une version nettoyée pour hébergement local.
 Les secrets Abacus et le fichier `.env` original ont été retirés.

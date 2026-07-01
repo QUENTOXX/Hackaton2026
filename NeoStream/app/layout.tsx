@@ -15,17 +15,17 @@ export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXTAUTH_URL || 'http://localhost:3000'),
-  title: 'SentinelGuard — Système Anti-Fraude',
+  title: 'NeoStream — Watch Together',
   description:
-    "Centre de contrôle de sécurité : détection de connexions simultanées, blocage VPN/Proxies et détection des captures d'écran en temps réel.",
+    "Salons vidéo synchronisés et sécurisés : un présentateur pilote la lecture de tous les invités, avec protection anti-fraude en temps réel.",
   icons: {
     icon: '/favicon.svg',
     shortcut: '/favicon.svg',
   },
   openGraph: {
-    title: 'SentinelGuard — Système Anti-Fraude',
+    title: 'NeoStream — Watch Together',
     description:
-      "Centre de contrôle de sécurité en temps réel : connexions simultanées, VPN/Proxies, captures d'écran.",
+      "Salons vidéo synchronisés et sécurisés, avec détection des captures d'écran et supervision en temps réel.",
     images: ['/og-image.png'],
   },
 }

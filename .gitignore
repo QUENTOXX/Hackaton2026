@@ -2,8 +2,8 @@
 .claude
 .Help
 # Vidéos locales : on garde le dossier (via .gitkeep) mais pas les fichiers vidéo
-anti_fraud_local_ready/public/videos/*
-!anti_fraud_local_ready/public/videos/.gitkeep
+NeoStream/public/videos/*
+!NeoStream/public/videos/.gitkeep
 # Ancien emplacement / doublon éventuel à la racine
 /video_test.mp4
 /Local_Video/

@@ -135,7 +135,7 @@ export function DashboardClient({ email, name }: { email: string; name: string |
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
           <div className="flex items-center gap-3">
-            <Logo />
+            <Logo brand="sentinelguard" />
             <span className="hidden items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary sm:flex">
               <RefreshCw className="h-3 w-3" /> Temps réel
             </span>

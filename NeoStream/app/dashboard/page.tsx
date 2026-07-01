@@ -4,8 +4,14 @@ import { redirect } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { DashboardClient } from '@/components/dashboard/dashboard-client'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
+
+// Espace admin : marque SentinelGuard (module sécurité).
+export const metadata: Metadata = {
+  title: 'SentinelGuard — Centre de contrôle',
+}
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions)

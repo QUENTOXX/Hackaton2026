@@ -1,10 +1,10 @@
 # Hackathon ESTIAM × 42c — 2026
 
 Plateforme vidéo B2B **« V-Secure & Collaborate »**.
-Ce dépôt contient le module **Watch Together** (Pôle 1 · Sujet B) intégré à la plateforme de sécurité **SentinelGuard**, dans le dossier [`anti_fraud_local_ready/`](anti_fraud_local_ready).
+Ce dépôt contient **NeoStream**, la plateforme vidéo sécurisée, dans le dossier [`NeoStream/`](NeoStream). Elle réunit deux volets :
 
-- **Watch Together** : salons vidéo synchronisés — un présentateur pilote en temps réel les lecteurs de tous les invités (HLS / MP4 / YouTube).
-- **SentinelGuard** (Pôle 2) : authentification, détection anti-fraude, dashboard de supervision.
+- **NeoStream · Watch Together** (Pôle 1 · Sujet B) : salons vidéo synchronisés — un présentateur pilote en temps réel les lecteurs de tous les invités (HLS / MP4 / YouTube).
+- **SentinelGuard** (Pôle 2) : le module sécurité/admin — authentification, détection anti-fraude et dashboard de supervision.
 
 Documentation : [SUJET-HACKATHON.md](SUJET-HACKATHON.md) · [WATCH-TOGETHER-PLAN.md](WATCH-TOGETHER-PLAN.md) · [.Help/RECAP-SESSION.md](.Help/RECAP-SESSION.md)
 
@@ -31,7 +31,7 @@ Next.js 14 (App Router) · React 18 · TypeScript · **Socket.io** · **hls.js**
 Toutes les commandes se lancent **depuis le dossier de l'application** :
 
 ```powershell
-cd anti_fraud_local_ready
+cd NeoStream
 ```
 
 ### 1. Fichier d'environnement
@@ -115,7 +115,7 @@ http://localhost:3000
 ## Enchaînement minimal (relance rapide)
 
 ```powershell
-cd anti_fraud_local_ready
+cd NeoStream
 docker compose up -d db
 npm install --legacy-peer-deps
 npx prisma generate

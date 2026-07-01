@@ -1,6 +1,6 @@
 # Plan d'architecture — « Watch Together » (Pôle 1 · Sujet B)
 
-> Module de salon vidéo synchronisé **intégré dans SentinelGuard** (`anti_fraud_local_ready`).
+> Module de salon vidéo synchronisé **intégré dans SentinelGuard** (`NeoStream`).
 > Un présentateur (= hôte/créateur d'une salle) pilote en temps réel les lecteurs HLS de tous les invités.
 > Stack : Next.js 14 + Socket.io + hls.js + Prisma/PostgreSQL — 100 % local.
 
@@ -117,7 +117,7 @@ model PlaybackEvent {
 ## 5. Arborescence (à créer / modifier)
 
 ```
-anti_fraud_local_ready/
+NeoStream/
 ├── server.js                                  ★ NOUVEAU (Next + Socket.io)
 ├── package.json                               ✎ scripts dev/start
 ├── prisma/schema.prisma                       ✎ Room, RoomParticipant, relations
