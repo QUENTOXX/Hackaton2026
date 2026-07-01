@@ -1,5 +1,10 @@
 .RESSOURCES
 .claude
-Commandes_Test_Projet.pdf
-video_test.mp4
+.Help
+# Vidéos locales : on garde le dossier (via .gitkeep) mais pas les fichiers vidéo
+anti_fraud_local_ready/public/videos/*
+!anti_fraud_local_ready/public/videos/.gitkeep
+# Ancien emplacement / doublon éventuel à la racine
+/video_test.mp4
+/Local_Video/
 claude.md
