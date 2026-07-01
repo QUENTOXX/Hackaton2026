@@ -31,7 +31,7 @@ function getRoom(code) {
   return rooms.get(code) || null
 }
 
-function createRoomInMemory({ code, roomId, name, hostId, videoSrc }) {
+function createRoomInMemory({ code, roomId, name, hostId, videoSrc, durationSec = null }) {
   /** @type {Room} */
   const room = {
     code,
@@ -39,6 +39,7 @@ function createRoomInMemory({ code, roomId, name, hostId, videoSrc }) {
     name,
     hostId,
     videoSrc,
+    durationSec, // durée totale de la vidéo (remontée par le lecteur de l'hôte), pour la télémétrie
     playback: { state: 'paused', positionSec: 0, updatedAt: Date.now() },
     participants: new Map(),
     hostSocketId: null,

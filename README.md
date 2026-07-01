@@ -1,12 +1,13 @@
 # Hackathon ESTIAM × 42c — 2026
 
 Plateforme vidéo B2B **« V-Secure & Collaborate »**.
-Ce dépôt contient **NeoStream**, la plateforme vidéo sécurisée, dans le dossier [`NeoStream/`](NeoStream). Elle réunit deux volets :
+Ce dépôt contient **NeoStream**, la plateforme vidéo sécurisée (dossier [`NeoStream/`](NeoStream)), et son module d'analyse d'audience (dossier [`video_analytics/`](video_analytics)). Il réunit les trois pôles :
 
-- **NeoStream · Watch Together** (Pôle 1 · Sujet B) : salons vidéo synchronisés — un présentateur pilote en temps réel les lecteurs de tous les invités (HLS / MP4 / YouTube).
+- **NeoStream · Watch Together** (Pôle 1 · Sujet B) : salons vidéo synchronisés — un présentateur pilote en temps réel les lecteurs de tous les invités (HLS / MP4 / YouTube), avec import de vidéos locales.
 - **SentinelGuard** (Pôle 2) : le module sécurité/admin — authentification, détection anti-fraude et dashboard de supervision.
+- **Analyse d'audience** (Pôle 3 · Sujet B) : dashboard Streamlit + modèle scikit-learn (zones d'ennui & prédiction de rétention), alimenté par la télémétrie réelle de Watch Together.
 
-Documentation : [SUJET-HACKATHON.md](SUJET-HACKATHON.md) · [WATCH-TOGETHER-PLAN.md](WATCH-TOGETHER-PLAN.md) · [.Help/RECAP-SESSION.md](.Help/RECAP-SESSION.md)
+Documentation : [documentation/SUJET-HACKATHON.md](documentation/SUJET-HACKATHON.md) · [documentation/WATCH-TOGETHER-PLAN.md](documentation/WATCH-TOGETHER-PLAN.md) · [documentation/](documentation)
 
 ---
 
@@ -139,13 +140,42 @@ npm run dev
 
 1. Se connecter, puis ouvrir **Watch Together** (`/watch`).
 2. **Créer une salle** : choisir une source vidéo, puis partager le **code** généré.
-   - **Vidéo locale** : déposer des fichiers dans `public/videos/` (ils apparaissent dans le sélecteur).
+   - **Vidéo locale** : soit déposer des fichiers dans `public/videos/`, soit cliquer **« Importer une vidéo »** dans le lobby (upload sécurisé : `mp4, mov, mkv, webm, ogg, m4v, avi`, max 512 Mo).
    - **URL directe** : lien vers un fichier `.mp4` ou un flux `.m3u8`.
    - **YouTube** : coller un lien `youtube.com/watch?v=…` ou `youtu.be/…`.
+   > Pour la démo, privilégier **mp4** : `mkv`/`avi` ne sont pas lus nativement par tous les navigateurs.
 3. **Rejoindre** : un invité entre le code ; son lecteur suit automatiquement le présentateur.
 4. **Historique** (`/watch/history`) : sessions terminées, durée et temps de présence des participants.
 
 **Comportements automatiques** : transfert d'hôte après 60 s de déconnexion du présentateur ; fermeture de la salle après 10 min d'inactivité.
+
+---
+
+## Analyse d'audience (Pôle 3)
+
+Le module `video_analytics/` (Streamlit + scikit-learn) analyse les **vraies** données de visionnage de Watch Together : zones d'ennui et prédiction de rétention.
+
+**Depuis l'application (recommandé)** — en tant qu'admin :
+1. Ouvrir l'espace **Analytics** (bouton dans le dashboard, ou `/analytics`).
+2. Cliquer **« Démarrer le module d'analyse »** → le dashboard Streamlit s'embarque directement dans la page.
+3. **Exporter les logs (CSV)** puis, dans Streamlit, onglet **« Importer des logs »**, déposer le fichier pour analyser les données réelles.
+
+> Prérequis (une seule fois) : installer les dépendances Python du module.
+> ```powershell
+> cd video_analytics
+> python -m venv venv          # optionnel mais conseillé
+> venv\Scripts\activate        # (WSL/bash : source venv/bin/activate)
+> pip install -r requirements.txt
+> ```
+> Le bouton « Démarrer » lance le module (il n'installe pas les dépendances). Lancement manuel équivalent : `streamlit run app.py` (port 8501).
+
+**Variable d'environnement (optionnelle)** — si le module tourne sur une autre URL que `http://localhost:8501`, la définir dans `NeoStream/.env` :
+
+```env
+NEXT_PUBLIC_ANALYTICS_URL="http://localhost:8501"
+```
+
+Détail du contrat de données : [`video_analytics/data/SCHEMA_LOGS.md`](video_analytics/data/SCHEMA_LOGS.md).
 
 ---
 
@@ -158,3 +188,5 @@ npm run dev
 | Conflit de dépendances à l'install | Utiliser `npm install --legacy-peer-deps` (au besoin, supprimer d'abord `node_modules` et `package-lock.json`) |
 | Vidéo YouTube muette chez l'invité | Politique *autoplay* du navigateur : cliquer « Activer le son » |
 | Docker/WSL capricieux | `wsl --shutdown` puis relancer Docker Desktop |
+| « Démarrer le module » échoue | Installer d'abord les dépendances : `pip install -r requirements.txt` dans `video_analytics/`, et vérifier que `python` est accessible |
+| Dashboard Streamlit non affiché dans l'iframe | Cliquer « Ouvrir dans un onglet » ; vérifier que le module tourne sur le port 8501 |

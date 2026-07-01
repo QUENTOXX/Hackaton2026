@@ -4,7 +4,7 @@
 // Lobby Watch Together : créer une salle (avec choix de la source vidéo),
 // rejoindre par code, lister les salles actives. Créateur = présentateur.
 // =====================================================================
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signOut, useSession } from 'next-auth/react'
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, LogIn, Radio, Crown, RefreshCw, LayoutDashboard, Lock, LogOut, Clock } from 'lucide-react'
+import { Plus, LogIn, Radio, Crown, RefreshCw, LayoutDashboard, Lock, LogOut, Clock, Upload } from 'lucide-react'
 
 interface RoomSummary {
   code: string
@@ -45,6 +45,8 @@ export function WatchLobby() {
   const [urlValue, setUrlValue] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [creating, setCreating] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function loadRooms() {
     setLoading(true)
@@ -68,6 +70,25 @@ export function WatchLobby() {
       if (list.length > 0) setSourceValue(list[0].src) // 1re vidéo locale par défaut
     } catch {
       /* silencieux */
+    }
+  }
+
+  async function uploadVideo(file: File) {
+    setUploading(true)
+    try {
+      const body = new FormData()
+      body.append('file', file)
+      const res = await fetch('/api/videos/upload', { method: 'POST', body })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || "Échec de l'import.")
+      await loadVideos()
+      if (data?.src) setSourceValue(data.src) // sélectionne la vidéo importée
+      toast.success(`Vidéo importée : ${data.label ?? data.file}`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Échec de l'import.")
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = '' // permet de ré-importer le même fichier
     }
   }
 
@@ -170,6 +191,29 @@ export function WatchLobby() {
                   <option value={URL_OPTION}>🔗 Lien externe (YouTube, .mp4, .m3u8)…</option>
                   <option value={DEFAULT_OPTION}>▶︎ Flux de test par défaut</option>
                 </select>
+
+                {/* Import d'une vidéo locale (sécurisé : extensions vidéo uniquement) */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="video/*,.mkv,.avi,.m4v,.ogv,.mov"
+                  className="hidden"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0]
+                    if (f) uploadVideo(f)
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploading ? 'Import en cours…' : 'Importer une vidéo (mp4, mov, mkv, webm…)'}
+                </Button>
               </div>
 
               {sourceValue === URL_OPTION && (

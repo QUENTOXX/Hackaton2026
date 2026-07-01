@@ -1,0 +1,12 @@
+# Configuration Streamlit — module Analyse d'audience (Pôle 3)
+# Permet d'embarquer le dashboard dans une iframe (onglet « Analyse d'audience »
+# du centre de contrôle NeoStream) et de le lancer sans ouverture de navigateur.
+
+[server]
+headless = true
+# Nécessaire pour l'affichage cross-origin dans l'iframe NeoStream (localhost:3000 -> :8501)
+enableCORS = false
+enableXsrfProtection = false
+
+[browser]
+gatherUsageStats = false

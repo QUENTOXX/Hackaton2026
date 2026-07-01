@@ -1,6 +1,8 @@
 .RESSOURCES
 .claude
-.Help
+# .Help : on versionne uniquement les récaps de session (traçabilité), pas le reste
+.Help/*
+!.Help/RECAP-*.md
 # Vidéos locales : on garde le dossier (via .gitkeep) mais pas les fichiers vidéo
 NeoStream/public/videos/*
 !NeoStream/public/videos/.gitkeep
@@ -8,6 +10,8 @@ NeoStream/public/videos/*
 /video_test.mp4
 /Local_Video/
 claude.md
-video_analytics/
+# Module Analyse d'audience (Pôle 3) : suivi du code, mais pas des artefacts Python
 venv/
 __pycache__/
+*.pyc
+.DS_Store

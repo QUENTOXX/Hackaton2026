@@ -52,6 +52,7 @@ export const EV = {
   PRESENTER_SEEK: 'presenter:seek',
   PRESENTER_LOAD: 'presenter:loadVideo',
   PRESENTER_END: 'presenter:endRoom',
+  PRESENTER_DURATION: 'presenter:duration',
   SCREENSHOT_ATTEMPT: 'screenshot:attempt',
   // --- serveur -> client ---
   SYNC_PLAY: 'sync:play',

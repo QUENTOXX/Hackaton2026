@@ -119,9 +119,11 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
   }, [socket, connected, code, currentUserId, applyInitial, router])
 
   // --- Actions de l'hôte (remontées par le lecteur) ---
-  const onHostPlay = (positionSec: number) => socket?.emit(EV.PRESENTER_PLAY, { positionSec })
-  const onHostPause = (positionSec: number) => socket?.emit(EV.PRESENTER_PAUSE, { positionSec })
-  const onHostSeek = (positionSec: number) => socket?.emit(EV.PRESENTER_SEEK, { positionSec })
+  const onHostPlay = (positionSec: number, rate?: number) => socket?.emit(EV.PRESENTER_PLAY, { positionSec, rate })
+  const onHostPause = (positionSec: number, rate?: number) => socket?.emit(EV.PRESENTER_PAUSE, { positionSec, rate })
+  const onHostSeek = (positionSec: number, rate?: number) => socket?.emit(EV.PRESENTER_SEEK, { positionSec, rate })
+  // Durée totale de la vidéo, remontée une fois par le lecteur de l'hôte (télémétrie Pôle 3).
+  const onDuration = (durationSec: number) => socket?.emit(EV.PRESENTER_DURATION, { durationSec })
 
   // --- Surveillance capture d'écran : toast local + remontée au serveur ---
   const reportScreenshot = useCallback(
@@ -221,6 +223,7 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
                     onHostPlay={onHostPlay}
                     onHostPause={onHostPause}
                     onHostSeek={onHostSeek}
+                    onDuration={onDuration}
                   />
                 ) : (
                   <HlsPlayer
@@ -230,6 +233,7 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
                     onHostPlay={onHostPlay}
                     onHostPause={onHostPause}
                     onHostSeek={onHostSeek}
+                    onDuration={onDuration}
                   />
                 )
               })()}

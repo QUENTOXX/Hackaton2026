@@ -20,7 +20,7 @@ import { BlockedIpsManager, type BlockedIpItem } from './blocked-ips-manager'
 import { LogsTable } from './logs-table'
 import { SimulatorPanel } from './simulator-panel'
 import { THREAT_LABELS } from '@/lib/labels'
-import { LogOut, Lock, PieChart as PieIcon, BarChart3, RefreshCw, Radio } from 'lucide-react'
+import { LogOut, Lock, PieChart as PieIcon, BarChart3, RefreshCw, Radio, LineChart } from 'lucide-react'
 
 // Les graphiques sont chargés côté client uniquement (ssr:false)
 const ThreatPieChart = dynamic(() => import('./charts').then((m) => m.ThreatPieChart), {
@@ -141,6 +141,9 @@ export function DashboardClient({ email, name }: { email: string; name: string |
             </span>
           </div>
           <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/analytics"><LineChart className="mr-2 h-4 w-4" /> Analytics</Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link href="/watch"><Radio className="mr-2 h-4 w-4" /> Watch Together</Link>
             </Button>

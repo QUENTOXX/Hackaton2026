@@ -40,6 +40,14 @@ const handle = app.getRequestHandler()
 
 const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0)
 
+// Déduit un type d'appareil grossier depuis le user-agent (pour la télémétrie Pôle 3).
+function deviceFromUA(ua = '') {
+  const s = String(ua).toLowerCase()
+  if (/ipad|tablet|playbook|silk/.test(s)) return 'tablet'
+  if (/mobi|iphone|android.*mobile|phone/.test(s)) return 'mobile'
+  return 'desktop'
+}
+
 // --- Persistance non bloquante (audit + télémétrie) ---------------------
 function logRoomEvent(room, userId, type, message) {
   prisma.securityLog
@@ -55,9 +63,18 @@ function logRoomEvent(room, userId, type, message) {
     .catch((e) => console.error('[log] securityLog', e.message))
 }
 
-function recordPlayback(room, userId, type, positionSec) {
+function recordPlayback(room, userId, type, positionSec, { device = null, playbackRate = null } = {}) {
   prisma.playbackEvent
-    .create({ data: { roomId: room.roomId, userId, type, positionSec: num(positionSec) } })
+    .create({
+      data: {
+        roomId: room.roomId,
+        userId,
+        type,
+        positionSec: num(positionSec),
+        device,
+        playbackRate: typeof playbackRate === 'number' && isFinite(playbackRate) ? playbackRate : null,
+      },
+    })
     .catch((e) => console.error('[log] playbackEvent', e.message))
 }
 
@@ -124,6 +141,7 @@ app.prepare().then(() => {
         name: token.name ?? null,
         role: token.role ?? 'user',
       }
+      socket.data.device = deviceFromUA(socket.request.headers['user-agent'])
       nextFn()
     } catch (err) {
       console.error('[socket] erreur auth handshake:', err)
@@ -159,6 +177,7 @@ app.prepare().then(() => {
             name: dbRoom.name,
             hostId: dbRoom.hostId,
             videoSrc: dbRoom.videoSrc,
+            durationSec: dbRoom.durationSec ?? null,
           })
         }
 
@@ -199,7 +218,7 @@ app.prepare().then(() => {
         io.to(code).emit('room:participants', store.participantList(room))
 
         logRoomEvent(room, user.id, 'ROOM_JOIN', `${displayName} a rejoint la salle ${code}`)
-        recordPlayback(room, user.id, 'JOIN', store.currentPosition(room))
+        recordPlayback(room, user.id, 'JOIN', store.currentPosition(room), { device: socket.data.device })
       } catch (e) {
         console.error('[socket] room:join', e)
         if (ack) ack({ ok: false, error: 'SERVER_ERROR' })
@@ -207,39 +226,53 @@ app.prepare().then(() => {
     })
 
     // --- Commandes du présentateur (autorité serveur) ---
-    socket.on('presenter:play', ({ positionSec } = {}) => {
+    socket.on('presenter:play', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: 'playing', positionSec: num(positionSec), updatedAt: Date.now() }
       socket.to(room.code).emit('sync:play', { positionSec: room.playback.positionSec })
-      recordPlayback(room, user.id, 'PLAY', room.playback.positionSec)
+      recordPlayback(room, user.id, 'PLAY', room.playback.positionSec, { device: socket.data.device, playbackRate: rate })
     })
 
-    socket.on('presenter:pause', ({ positionSec } = {}) => {
+    socket.on('presenter:pause', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: 'paused', positionSec: num(positionSec), updatedAt: Date.now() }
       socket.to(room.code).emit('sync:pause', { positionSec: room.playback.positionSec })
-      recordPlayback(room, user.id, 'PAUSE', room.playback.positionSec)
+      recordPlayback(room, user.id, 'PAUSE', room.playback.positionSec, { device: socket.data.device, playbackRate: rate })
     })
 
-    socket.on('presenter:seek', ({ positionSec } = {}) => {
+    socket.on('presenter:seek', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: room.playback.state, positionSec: num(positionSec), updatedAt: Date.now() }
       socket.to(room.code).emit('sync:seek', { positionSec: room.playback.positionSec })
-      recordPlayback(room, user.id, 'SEEK', room.playback.positionSec)
+      recordPlayback(room, user.id, 'SEEK', room.playback.positionSec, { device: socket.data.device, playbackRate: rate })
     })
 
     socket.on('presenter:loadVideo', ({ videoSrc } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room) || !videoSrc) return
       room.videoSrc = String(videoSrc)
+      room.durationSec = null // nouvelle vidéo -> la durée sera re-remontée par le lecteur
       room.playback = { state: 'paused', positionSec: 0, updatedAt: Date.now() }
       io.to(room.code).emit('room:videoChanged', { videoSrc: room.videoSrc })
+    })
+
+    // --- Durée totale de la vidéo, remontée par le lecteur de l'hôte ---
+    // Sert la télémétrie Pôle 3 (rétention = position atteinte / durée totale).
+    socket.on('presenter:duration', ({ durationSec } = {}) => {
+      const room = store.getRoom(socket.data.roomCode)
+      if (!isHost(room)) return
+      const d = num(durationSec)
+      if (d <= 0 || room.durationSec) return // on ne fixe la durée qu'une fois
+      room.durationSec = d
+      prisma.room
+        .update({ where: { id: room.roomId }, data: { durationSec: d } })
+        .catch((e) => console.error('[room] duration', e.message))
     })
 
     // --- Tentative de capture d'écran (tous les participants sont surveillés) ---
@@ -288,7 +321,7 @@ app.prepare().then(() => {
       room.participants.delete(socket.id)
       io.to(code).emit('room:participants', store.participantList(room))
       logRoomEvent(room, user.id, 'ROOM_LEAVE', `${displayName} a quitté la salle ${code}`)
-      recordPlayback(room, user.id, 'LEAVE', store.currentPosition(room))
+      recordPlayback(room, user.id, 'LEAVE', store.currentPosition(room), { device: socket.data.device })
 
       const hostGone = room.hostId === user.id && !store.userStillConnected(room, room.hostId)
       if (hostGone) {

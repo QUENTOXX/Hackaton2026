@@ -1,0 +1,13 @@
+video_id,title,category,duration_s,boring_zones_ground_truth
+v_000,Onboarding nouveaux collaborateurs,onboarding,900,236-333
+v_001,Formation cybersécurité niveau 1,formation,240,72-109;125-159
+v_002,Webinar résultats Q2,formation,180,65-88
+v_003,Présentation produit V-Secure,produit,600,365-455
+v_004,Point sécurité mensuel,formation,240,131-169
+v_005,Formation RGPD,formation,240,111-137;86-123
+v_006,Démo plateforme collaborative,communication_interne,180,54-83
+v_007,Réunion stratégie 2026,produit,300,184-225
+v_008,Formation management à distance,onboarding,180,71-97;125-146
+v_009,Retour d'expérience client,webinar,900,246-338
+v_010,Introduction à l'IA en entreprise,produit,180,123-144
+v_011,Communication direction générale,webinar,900,298-402

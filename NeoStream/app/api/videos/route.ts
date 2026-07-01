@@ -6,8 +6,10 @@ import { NextResponse } from 'next/server'
 import { readdir } from 'fs/promises'
 import path from 'path'
 import { getSessionUser } from '@/lib/guard'
+import { VIDEO_EXT } from '@/lib/video-formats'
 
-const VIDEO_EXT = ['.mp4', '.webm', '.ogg', '.mov', '.m3u8']
+// On liste aussi les playlists HLS locales éventuelles (.m3u8) en plus des fichiers vidéo.
+const LISTABLE_EXT = [...VIDEO_EXT, '.m3u8']
 
 export async function GET() {
   const user = await getSessionUser()
@@ -23,7 +25,7 @@ export async function GET() {
   }
 
   const videos = files
-    .filter((f) => VIDEO_EXT.includes(path.extname(f).toLowerCase()))
+    .filter((f) => LISTABLE_EXT.includes(path.extname(f).toLowerCase()))
     .map((f) => ({
       file: f,
       label: f.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '),

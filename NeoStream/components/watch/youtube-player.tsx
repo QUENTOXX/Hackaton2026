@@ -18,9 +18,11 @@ import type { PlayerHandle } from './player-types'
 interface YouTubePlayerProps {
   videoId: string
   isHost: boolean
-  onHostPlay?: (positionSec: number) => void
-  onHostPause?: (positionSec: number) => void
-  onHostSeek?: (positionSec: number) => void
+  onHostPlay?: (positionSec: number, rate?: number) => void
+  onHostPause?: (positionSec: number, rate?: number) => void
+  onHostSeek?: (positionSec: number, rate?: number) => void
+  /** Remonte la durée totale de la vidéo (hôte uniquement), pour la télémétrie. */
+  onDuration?: (durationSec: number) => void
 }
 
 type Cmd = { type: 'play' | 'pause' | 'seek'; pos: number }
@@ -47,7 +49,7 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(function YouTubePlayer(
-  { videoId, isHost, onHostPlay, onHostPause, onHostSeek },
+  { videoId, isHost, onHostPlay, onHostPause, onHostSeek, onDuration },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -133,13 +135,28 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
               doApply(playerRef.current, pending.current)
               pending.current = null
             }
+            // Durée totale : getDuration() peut renvoyer 0 tant que la vidéo n'a
+            // pas commencé à charger -> on ré-essaie quelques fois (hôte only).
+            if (isHost) {
+              let tries = 0
+              const poll = window.setInterval(() => {
+                const d = playerRef.current?.getDuration?.() ?? 0
+                if (d > 0) {
+                  onDuration?.(d)
+                  window.clearInterval(poll)
+                } else if (++tries > 10) {
+                  window.clearInterval(poll)
+                }
+              }, 1000)
+            }
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onStateChange: (e: any) => {
             if (!isHost || suppress.current) return
             const t = playerRef.current?.getCurrentTime?.() ?? 0
-            if (e.data === YT.PlayerState.PLAYING) onHostPlay?.(t)
-            else if (e.data === YT.PlayerState.PAUSED) onHostPause?.(t)
+            const rate = playerRef.current?.getPlaybackRate?.() ?? 1
+            if (e.data === YT.PlayerState.PLAYING) onHostPlay?.(t, rate)
+            else if (e.data === YT.PlayerState.PAUSED) onHostPause?.(t, rate)
           },
         },
       })
@@ -166,7 +183,7 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
       const t = p.getCurrentTime?.() ?? 0
       const state = p.getPlayerState?.() // 1 = playing
       const expected = lastTime.current + 1
-      if (state === 1 && Math.abs(t - expected) > 1.5) onHostSeek?.(t)
+      if (state === 1 && Math.abs(t - expected) > 1.5) onHostSeek?.(t, p.getPlaybackRate?.() ?? 1)
       lastTime.current = t
     }, 1000)
     return () => window.clearInterval(id)

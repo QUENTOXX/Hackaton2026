@@ -14,15 +14,17 @@ import type { PlayerHandle } from './player-types'
 interface HlsPlayerProps {
   src: string
   isHost: boolean
-  onHostPlay?: (positionSec: number) => void
-  onHostPause?: (positionSec: number) => void
-  onHostSeek?: (positionSec: number) => void
+  onHostPlay?: (positionSec: number, rate?: number) => void
+  onHostPause?: (positionSec: number, rate?: number) => void
+  onHostSeek?: (positionSec: number, rate?: number) => void
+  /** Remonte la durée totale de la vidéo (hôte uniquement), pour la télémétrie. */
+  onDuration?: (durationSec: number) => void
 }
 
 const SYNC_TOLERANCE = 0.5 // s : on ne recale que si l'écart dépasse ce seuil
 
 export const HlsPlayer = forwardRef<PlayerHandle, HlsPlayerProps>(function HlsPlayer(
-  { src, isHost, onHostPlay, onHostPause, onHostSeek },
+  { src, isHost, onHostPlay, onHostPause, onHostSeek, onDuration },
   ref,
 ) {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -95,10 +97,16 @@ export const HlsPlayer = forwardRef<PlayerHandle, HlsPlayerProps>(function HlsPl
   }))
 
   // --- Remontée des actions de l'hôte (contrôles natifs) ---
-  const emitIfHost = (cb?: (t: number) => void) => {
+  const emitIfHost = (cb?: (t: number, rate?: number) => void) => {
     if (!isHost || suppress.current) return
     const v = videoRef.current
-    if (v && cb) cb(v.currentTime)
+    if (v && cb) cb(v.currentTime, v.playbackRate)
+  }
+
+  // Durée totale connue dès que les métadonnées sont chargées (hôte uniquement).
+  const reportDuration = () => {
+    const v = videoRef.current
+    if (isHost && v && isFinite(v.duration) && v.duration > 0) onDuration?.(v.duration)
   }
 
   return (
@@ -111,6 +119,8 @@ export const HlsPlayer = forwardRef<PlayerHandle, HlsPlayerProps>(function HlsPl
         onPlay={() => emitIfHost(onHostPlay)}
         onPause={() => emitIfHost(onHostPause)}
         onSeeked={() => emitIfHost(onHostSeek)}
+        onLoadedMetadata={reportDuration}
+        onDurationChange={reportDuration}
       />
       {!isHost && (
         <div className="pointer-events-none absolute bottom-3 left-3 rounded-md bg-black/60 px-2 py-1 text-xs text-white/90 backdrop-blur">

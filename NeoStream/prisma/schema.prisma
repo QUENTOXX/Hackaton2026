@@ -85,6 +85,7 @@ model Room {
   hostId    String                        // créateur = présentateur initial
   host      User     @relation("HostRooms", fields: [hostId], references: [id], onDelete: Cascade)
   videoSrc  String                        // source HLS (.m3u8)
+  durationSec Float?                       // durée totale de la vidéo (remontée par le lecteur de l'hôte) — clé pour la rétention (Pôle 3)
   isLive    Boolean  @default(true)
   createdAt DateTime @default(now())
   endedAt   DateTime?
@@ -111,12 +112,14 @@ model RoomParticipant {
 
 // --- Télémétrie de visionnage (couture d'intégration Pôle 3 — IA & Data) ---
 model PlaybackEvent {
-  id          String   @id @default(cuid())
-  roomId      String
-  userId      String
-  type        String                       // PLAY | PAUSE | SEEK | JOIN | LEAVE | BUFFER | ENDED
-  positionSec Float                        // position dans la vidéo au moment de l'événement
-  createdAt   DateTime @default(now())
+  id           String   @id @default(cuid())
+  roomId       String
+  userId       String
+  type         String                      // PLAY | PAUSE | SEEK | JOIN | LEAVE | BUFFER | ENDED
+  positionSec  Float                       // position dans la vidéo au moment de l'événement
+  device       String?                     // desktop | mobile | tablet (déduit du user-agent)
+  playbackRate Float?                       // vitesse de lecture (1.0 = normale)
+  createdAt    DateTime @default(now())
 
   @@index([roomId])
   @@index([type])
