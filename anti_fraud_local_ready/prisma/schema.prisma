@@ -1,0 +1,123 @@
+// =====================================================================
+// Schéma de la base de données (PostgreSQL via Prisma)
+// Chaque table est commentée en français pour faciliter la compréhension.
+// =====================================================================
+
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+// --- Comptes utilisateurs (admin du centre de sécurité + utilisateurs simulés) ---
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String                       // mot de passe haché (bcrypt)
+  role      String   @default("user")    // "admin" = accès au dashboard, "user" = page protégée
+  createdAt DateTime @default(now())
+
+  sessions     UserSession[]
+  securityLogs SecurityLog[]
+  hostedRooms  Room[]            @relation("HostRooms")
+  joinedRooms  RoomParticipant[] @relation("JoinedRooms")
+}
+
+// --- Sessions de connexion : sert à détecter les connexions simultanées anormales ---
+model UserSession {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ipAddress  String                      // adresse IP de la connexion
+  location   String?                     // ville, pays (déduit de l'IP)
+  device     String?                     // type d'appareil / navigateur
+  userAgent  String?
+  isActive   Boolean  @default(true)     // session encore active ?
+  isFlagged  Boolean  @default(false)    // marquée comme suspecte (connexion simultanée)
+  createdAt  DateTime @default(now())
+  lastSeen   DateTime @default(now())
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+// --- Journal des événements de sécurité (toutes les menaces détectées) ---
+model SecurityLog {
+  id        String   @id @default(cuid())
+  type      String                       // SIMULTANEOUS_LOGIN | VPN_PROXY | SCREENSHOT_ATTEMPT | BLOCKED_IP | LOGIN | INFO
+  severity  String   @default("low")     // low | medium | high | critical
+  message   String                       // description lisible de l'événement
+  ipAddress String?
+  location  String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  metadata  Json?                        // données complémentaires (proxy, hosting, etc.)
+  createdAt DateTime @default(now())
+
+  @@index([type])
+  @@index([createdAt])
+}
+
+// --- Adresses IP bloquées manuellement ou automatiquement ---
+model BlockedIP {
+  id        String   @id @default(cuid())
+  ipAddress String   @unique
+  reason    String?                      // raison du blocage
+  blockedBy String?                      // "manuel" ou "auto"
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
+}
+
+// =====================================================================
+// Watch Together (Pôle 1 · Sujet B) — salles vidéo synchronisées
+// =====================================================================
+
+// --- Une salle de visionnage synchronisée ---
+model Room {
+  id        String   @id @default(cuid())
+  code      String   @unique              // code court partagé (ex. "7F3K")
+  name      String
+  hostId    String                        // créateur = présentateur initial
+  host      User     @relation("HostRooms", fields: [hostId], references: [id], onDelete: Cascade)
+  videoSrc  String                        // source HLS (.m3u8)
+  isLive    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  endedAt   DateTime?
+
+  participants RoomParticipant[]
+
+  @@index([code])
+  @@index([isLive])
+}
+
+// --- Participation d'un utilisateur à une salle (audit) ---
+model RoomParticipant {
+  id       String   @id @default(cuid())
+  roomId   String
+  room     Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation("JoinedRooms", fields: [userId], references: [id], onDelete: Cascade)
+  role     String   @default("guest")     // "host" | "guest"
+  joinedAt DateTime @default(now())
+  leftAt   DateTime?
+
+  @@index([roomId])
+}
+
+// --- Télémétrie de visionnage (couture d'intégration Pôle 3 — IA & Data) ---
+model PlaybackEvent {
+  id          String   @id @default(cuid())
+  roomId      String
+  userId      String
+  type        String                       // PLAY | PAUSE | SEEK | JOIN | LEAVE | BUFFER | ENDED
+  positionSec Float                        // position dans la vidéo au moment de l'événement
+  createdAt   DateTime @default(now())
+
+  @@index([roomId])
+  @@index([type])
+}
