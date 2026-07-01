@@ -167,7 +167,26 @@ Le module sécurité est accessible via le **dashboard admin** (`/dashboard`).
 > ```
 > En production derrière un vrai proxy, on ne ferait confiance qu'à l'IP du proxy (et non au `X-Forwarded-For` client).
 
-**Détections** : connexions simultanées (IP distinctes), VPN/Proxy (via `ip-api.com`, réel), tentatives de capture d'écran (heuristiques navigateur), le tout journalisé dans `SecurityLog` et visible en temps réel.
+**Détections & réponses** :
+- **Connexions simultanées** (IP distinctes actives pour un même compte).
+- **Geo-velocity / voyage impossible** : deux sessions actives trop éloignées pour le temps écoulé (> ~900 km/h) → alerte critique (coordonnées via `ip-api.com`).
+- **VPN / Proxy / datacenter** (réputation IP réelle via `ip-api.com`).
+- **Anti-brute-force login** : verrouillage temporaire après 5 échecs (par email+IP), puis **auto-blocage** réseau de l'IP publique en cas d'acharnement. Les **IP locales et en liste blanche sont exemptées** (aucun risque de se verrouiller soi-même).
+- **Capture d'écran** (heuristiques navigateur) + **watermark forensic** (email + horodatage incrustés sur la vidéo).
+- **Expiration des sessions** inactives (30 min) ; **rate-limit** HTTP (pare-feu) et **rate-limit des events Socket.io**.
+
+Tout est journalisé dans `SecurityLog` (badges **Démo/Réel**) et visible en temps réel.
+
+**Listes d'IP** : onglet **« IP bloquées »** (liste noire → 403 par le pare-feu) et **« IP autorisées »** (liste blanche → exemption du pare-feu et du brute-force, ex. poste de démo).
+
+**Comptes** : onglet **« Utilisateurs »** — gérer rôle, nom, mot de passe, suppression, et **déverrouiller** un compte bloqué par le brute-force (garde-fous : pas d'auto-suppression ni de suppression/rétrogradation du dernier admin).
+
+> ⚠️ **Après avoir récupéré ces changements**, applique le nouveau schéma (colonnes `latitude`/`longitude` de session) :
+> ```powershell
+> cd NeoStream
+> npx prisma generate   # si EPERM sous Windows/OneDrive : suspendre OneDrive puis relancer
+> npx prisma db push
+> ```
 
 **Journal démo vs réel** : le **simulateur** de menaces marque ses événements comme **« Démo »** (`metadata.simulated`) ; les vraies détections apparaissent en **« Réel »**. Le journal permet de filtrer par source et de **purger uniquement les logs réels** (bouton avec confirmation) tout en conservant l'historique de démonstration.
 

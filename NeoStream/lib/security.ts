@@ -11,6 +11,8 @@ export type ThreatType =
   | 'SCREENSHOT_ATTEMPT'
   | 'BLOCKED_IP'
   | 'RATE_LIMIT'
+  | 'BRUTE_FORCE'
+  | 'GEO_VELOCITY'
   | 'LOGIN'
   | 'INFO'
 
@@ -23,6 +25,8 @@ export const THREAT_LABELS: Record<string, string> = {
   SCREENSHOT_ATTEMPT: "Capture d'écran",
   BLOCKED_IP: 'IP bloquée',
   RATE_LIMIT: 'Rate-limit (pare-feu)',
+  BRUTE_FORCE: 'Brute-force login',
+  GEO_VELOCITY: 'Voyage impossible',
   LOGIN: 'Connexion',
   INFO: 'Information',
 }

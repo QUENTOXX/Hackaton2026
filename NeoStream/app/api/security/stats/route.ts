@@ -2,14 +2,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { requireAdmin } from '@/lib/guard'
+import { expireStaleSessions } from '@/lib/session-hygiene'
 
 export const dynamic = 'force-dynamic'
 
-const THREAT_TYPES = ['SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'RATE_LIMIT']
+const THREAT_TYPES = ['SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'RATE_LIMIT', 'BRUTE_FORCE', 'GEO_VELOCITY']
 
 export async function GET() {
   const auth = await requireAdmin()
   if (!auth.ok) return NextResponse.json({ error: 'Non autorisé' }, { status: auth.status })
+
+  await expireStaleSessions()
 
   // Nombre total de menaces (on exclut les simples connexions / infos)
   const totalThreats = await prisma.securityLog.count({

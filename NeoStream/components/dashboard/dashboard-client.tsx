@@ -17,8 +17,10 @@ import { StatCards, type Stats } from './stat-cards'
 import { AlertsFeed, type LogItem } from './alerts-feed'
 import { SessionsTable, type SessionItem } from './sessions-table'
 import { BlockedIpsManager, type BlockedIpItem } from './blocked-ips-manager'
+import { AllowedIpsManager, type AllowedIpItem } from './allowed-ips-manager'
 import { LogsTable } from './logs-table'
 import { SimulatorPanel } from './simulator-panel'
+import { UsersManager } from './users-manager'
 import { THREAT_LABELS } from '@/lib/labels'
 import { LogOut, Lock, PieChart as PieIcon, BarChart3, RefreshCw, Radio, LineChart } from 'lucide-react'
 
@@ -42,6 +44,7 @@ export function DashboardClient({ email, name }: { email: string; name: string |
   const [logs, setLogs] = useState<LogItem[]>([])
   const [sessions, setSessions] = useState<SessionItem[]>([])
   const [blockedIps, setBlockedIps] = useState<BlockedIpItem[]>([])
+  const [allowedIps, setAllowedIps] = useState<AllowedIpItem[]>([])
   const [filter, setFilter] = useState('ALL')
   const [simBusy, setSimBusy] = useState(false)
   const lastThreatId = useRef<string | null>(null)
@@ -50,22 +53,25 @@ export function DashboardClient({ email, name }: { email: string; name: string |
   // --- Récupère toutes les données ---
   const fetchAll = useCallback(async (currentFilter: string) => {
     try {
-      const [sRes, lRes, seRes, bRes] = await Promise.all([
+      const [sRes, lRes, seRes, bRes, aRes] = await Promise.all([
         fetch('/api/security/stats', { cache: 'no-store' }),
         fetch(`/api/security/logs?limit=80&type=${currentFilter}`, { cache: 'no-store' }),
         fetch('/api/security/sessions', { cache: 'no-store' }),
         fetch('/api/security/blocked-ips', { cache: 'no-store' }),
+        fetch('/api/security/allowed-ips', { cache: 'no-store' }),
       ])
       const sData = await sRes.json().catch(() => null)
       const lData = await lRes.json().catch(() => ({ logs: [] }))
       const seData = await seRes.json().catch(() => ({ sessions: [] }))
       const bData = await bRes.json().catch(() => ({ blockedIps: [] }))
+      const aData = await aRes.json().catch(() => ({ allowedIps: [] }))
 
       if (sData) setStats(sData)
       const newLogs: LogItem[] = lData?.logs ?? []
       setLogs(newLogs)
       setSessions(seData?.sessions ?? [])
       setBlockedIps(bData?.blockedIps ?? [])
+      setAllowedIps(aData?.allowedIps ?? [])
 
       // Notification en direct si une nouvelle menace apparaît
       const topThreat = newLogs.find(
@@ -109,6 +115,25 @@ export function DashboardClient({ email, name }: { email: string; name: string |
       const res = await fetch(`/api/security/blocked-ips?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' })
       if (res.ok) { toast.success(`IP ${ip} débloquée.`); fetchAll(filter) }
       else toast.error('Impossible de débloquer cette IP.')
+    } catch { toast.error('Erreur réseau.') }
+  }, [fetchAll, filter])
+
+  const handleAllow = useCallback(async (ip: string, reason = 'IP de confiance') => {
+    try {
+      const res = await fetch('/api/security/allowed-ips', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ipAddress: ip, reason }),
+      })
+      if (res.ok) { toast.success(`IP ${ip} ajoutée à la liste blanche.`); fetchAll(filter) }
+      else toast.error('Impossible d’autoriser cette IP.')
+    } catch { toast.error('Erreur réseau.') }
+  }, [fetchAll, filter])
+
+  const handleRemoveAllow = useCallback(async (ip: string) => {
+    try {
+      const res = await fetch(`/api/security/allowed-ips?ip=${encodeURIComponent(ip)}`, { method: 'DELETE' })
+      if (res.ok) { toast.success(`IP ${ip} retirée de la liste blanche.`); fetchAll(filter) }
+      else toast.error('Impossible de retirer cette IP.')
     } catch { toast.error('Erreur réseau.') }
   }, [fetchAll, filter])
 
@@ -190,6 +215,8 @@ export function DashboardClient({ email, name }: { email: string; name: string |
             <TabsTrigger value="sessions">Connexions ({sessions.length})</TabsTrigger>
             <TabsTrigger value="logs">Journal</TabsTrigger>
             <TabsTrigger value="blocked">IP bloquées ({blockedIps.length})</TabsTrigger>
+            <TabsTrigger value="allowed">IP autorisées ({allowedIps.length})</TabsTrigger>
+            <TabsTrigger value="users">Utilisateurs</TabsTrigger>
           </TabsList>
 
           {/* Vue d'ensemble */}
@@ -226,6 +253,14 @@ export function DashboardClient({ email, name }: { email: string; name: string |
 
           <TabsContent value="blocked" className="mt-4">
             <BlockedIpsManager blockedIps={blockedIps} onBlock={handleBlock} onUnblock={handleUnblock} />
+          </TabsContent>
+
+          <TabsContent value="allowed" className="mt-4">
+            <AllowedIpsManager allowedIps={allowedIps} onAllow={handleAllow} onRemove={handleRemoveAllow} />
+          </TabsContent>
+
+          <TabsContent value="users" className="mt-4">
+            <UsersManager />
           </TabsContent>
         </Tabs>
       </div>

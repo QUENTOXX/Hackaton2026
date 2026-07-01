@@ -115,6 +115,10 @@ export const HlsPlayer = forwardRef<PlayerHandle, HlsPlayerProps>(function HlsPl
         ref={videoRef}
         controls={isHost}
         playsInline
+        // Anti-scraping léger : pas de téléchargement, pas de PiP, clic droit bloqué.
+        controlsList="nodownload noplaybackrate noremoteplayback"
+        disablePictureInPicture
+        onContextMenu={(e) => e.preventDefault()}
         className="aspect-video w-full"
         onPlay={() => emitIfHost(onHostPlay)}
         onPause={() => emitIfHost(onHostPause)}

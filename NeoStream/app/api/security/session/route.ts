@@ -6,14 +6,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { getSessionUser } from '@/lib/guard'
-import { checkIpReputation, getClientIp, parseDevice, isPrivateIp } from '@/lib/ip-utils'
+import { checkIpReputation, getClientIp, parseDevice, isPrivateIp, haversineKm } from '@/lib/ip-utils'
 import { logSecurityEvent } from '@/lib/security'
+import { expireStaleSessions } from '@/lib/session-hygiene'
 
 export const dynamic = 'force-dynamic'
+
+// Seuils du geo-velocity (voyage impossible).
+const GEO_MIN_KM = 100 // en-deçà, on ignore (marge d'imprécision de la géoloc IP)
+const GEO_MAX_KMH = 900 // au-delà de ~900 km/h entre deux sessions actives = impossible
 
 export async function POST(req: NextRequest) {
   const user = await getSessionUser()
   if (!user) return NextResponse.json({ error: 'Non autorisé' }, { status: 401 })
+
+  // Hygiène : on expire les sessions inactives avant toute analyse.
+  await expireStaleSessions()
 
   const body = await req.json().catch(() => ({}))
   // En démo, l'utilisateur peut simuler une IP / localisation différente
@@ -60,7 +68,7 @@ export async function POST(req: NextRequest) {
   const session = existing
     ? await prisma.userSession.update({
         where: { id: existing.id },
-        data: { lastSeen: new Date(), location, device, userAgent },
+        data: { lastSeen: new Date(), location, device, userAgent, latitude: reputation.lat, longitude: reputation.lon },
       })
     : await prisma.userSession.create({
         data: {
@@ -69,6 +77,8 @@ export async function POST(req: NextRequest) {
           location,
           device,
           userAgent,
+          latitude: reputation.lat,
+          longitude: reputation.lon,
           isActive: true,
         },
       })
@@ -116,6 +126,48 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       metadata: { ips: distinctIps },
     })
+  }
+
+  // 5b) Geo-velocity : "voyage impossible" entre deux sessions actives.
+  // Si le même compte est actif à > GEO_MIN_KM avec une vitesse implicite
+  // > GEO_MAX_KMH (distance / temps écoulé), c'est physiquement impossible.
+  if (reputation.lat != null && reputation.lon != null) {
+    const others = await prisma.userSession.findMany({
+      where: {
+        userId: user.id,
+        isActive: true,
+        id: { not: session.id },
+        latitude: { not: null },
+        longitude: { not: null },
+      },
+    })
+    for (const o of others) {
+      const distKm = haversineKm(reputation.lat, reputation.lon, o.latitude!, o.longitude!)
+      if (distKm < GEO_MIN_KM) continue
+      const hours = Math.max((Date.now() - o.lastSeen.getTime()) / 3_600_000, 1 / 60) // min 1 min
+      const speed = distKm / hours
+      if (speed > GEO_MAX_KMH) {
+        await prisma.userSession.updateMany({
+          where: { id: { in: [session.id, o.id] } },
+          data: { isFlagged: true },
+        })
+        alerts.push({
+          type: 'GEO_VELOCITY',
+          severity: 'critical',
+          message: `Voyage impossible : ${Math.round(distKm)} km en ${hours < 1 ? Math.round(hours * 60) + ' min' : hours.toFixed(1) + ' h'} (~${Math.round(speed)} km/h).`,
+        })
+        await logSecurityEvent({
+          type: 'GEO_VELOCITY',
+          severity: 'critical',
+          message: `Voyage impossible pour ${user.email} : ${o.location ?? 'inconnu'} → ${location} (${Math.round(distKm)} km, ~${Math.round(speed)} km/h)`,
+          ipAddress: reputation.ip,
+          location,
+          userId: user.id,
+          metadata: { distanceKm: Math.round(distKm), speedKmh: Math.round(speed), from: o.location, to: location },
+        })
+        break // une alerte suffit
+      }
+    }
   }
 
   // Journalise la connexion normale si rien de suspect

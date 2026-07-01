@@ -14,7 +14,7 @@ import { THREAT_LABELS, THREAT_ICONS, SEVERITY_LABELS, SEVERITY_STYLES, formatDa
 import type { LogItem } from './alerts-feed'
 import { FileText, Info, Trash2 } from 'lucide-react'
 
-const FILTERS = ['ALL', 'SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'RATE_LIMIT', 'LOGIN', 'WATCH']
+const FILTERS = ['ALL', 'SIMULTANEOUS_LOGIN', 'VPN_PROXY', 'SCREENSHOT_ATTEMPT', 'BLOCKED_IP', 'RATE_LIMIT', 'BRUTE_FORCE', 'GEO_VELOCITY', 'LOGIN', 'WATCH']
 
 // Séparation démo / réel demandée pour la démo (deux "parties" du journal).
 const SOURCES = [

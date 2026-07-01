@@ -23,6 +23,7 @@ const BLOCKLIST_TTL_MS = 15_000 // fraîcheur du cache de la liste noire
 const LOG_THROTTLE_MS = 30_000 // 1 log max par (type, IP) sur cette période
 
 let blockedSet = new Set()
+let allowedSet = new Set() // liste blanche : IP de confiance, exemptées
 let blockedLoadedAt = 0
 const hits = new Map() // ip -> { count, resetAt }
 const lastLoggedAt = new Map() // "type|ip" -> timestamp
@@ -61,8 +62,8 @@ function shouldSkip(url) {
   )
 }
 
-// Rafraîchit le cache de la liste noire depuis la base (non bloquant).
-function refreshBlocklist(prisma) {
+// Rafraîchit les caches liste noire + liste blanche depuis la base (non bloquant).
+function refreshLists(prisma) {
   const now = Date.now()
   if (now - blockedLoadedAt < BLOCKLIST_TTL_MS) return
   blockedLoadedAt = now
@@ -73,6 +74,14 @@ function refreshBlocklist(prisma) {
     })
     .catch(() => {
       /* en cas d'erreur, on conserve l'ancien cache */
+    })
+  prisma.allowedIP
+    .findMany({ select: { ipAddress: true } })
+    .then((rows) => {
+      allowedSet = new Set(rows.map((r) => r.ipAddress))
+    })
+    .catch(() => {
+      /* idem */
     })
 }
 
@@ -103,10 +112,11 @@ function guard(req, res, prisma) {
   const url = req.url || '/'
   if (shouldSkip(url)) return false
 
-  refreshBlocklist(prisma) // async, non bloquant
+  refreshLists(prisma) // async, non bloquant
 
   const ip = getIp(req)
-  if (isTrustedLocal(ip)) return false // IP de confiance : jamais filtrée
+  if (isTrustedLocal(ip)) return false // IP locale : jamais filtrée
+  if (allowedSet.has(ip)) return false // liste blanche : IP de confiance exemptée
 
   // 1) Liste noire ------------------------------------------------------
   if (blockedSet.has(ip)) {

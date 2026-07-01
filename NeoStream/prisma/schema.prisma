@@ -34,6 +34,8 @@ model UserSession {
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   ipAddress  String                      // adresse IP de la connexion
   location   String?                     // ville, pays (déduit de l'IP)
+  latitude   Float?                      // coordonnées géo (pour le geo-velocity / voyage impossible)
+  longitude  Float?
   device     String?                     // type d'appareil / navigateur
   userAgent  String?
   isActive   Boolean  @default(true)     // session encore active ?
@@ -48,7 +50,7 @@ model UserSession {
 // --- Journal des événements de sécurité (toutes les menaces détectées) ---
 model SecurityLog {
   id        String   @id @default(cuid())
-  type      String                       // SIMULTANEOUS_LOGIN | VPN_PROXY | SCREENSHOT_ATTEMPT | BLOCKED_IP | LOGIN | INFO
+  type      String                       // SIMULTANEOUS_LOGIN | VPN_PROXY | SCREENSHOT_ATTEMPT | BLOCKED_IP | RATE_LIMIT | BRUTE_FORCE | GEO_VELOCITY | LOGIN | INFO
   severity  String   @default("low")     // low | medium | high | critical
   message   String                       // description lisible de l'événement
   ipAddress String?
@@ -68,6 +70,16 @@ model BlockedIP {
   ipAddress String   @unique
   reason    String?                      // raison du blocage
   blockedBy String?                      // "manuel" ou "auto"
+  createdAt DateTime @default(now())
+
+  @@index([ipAddress])
+}
+
+// --- Liste blanche : IP de confiance, exemptées du pare-feu et du brute-force ---
+model AllowedIP {
+  id        String   @id @default(cuid())
+  ipAddress String   @unique
+  reason    String?                      // ex. "IP bureau", "poste de démo"
   createdAt DateTime @default(now())
 
   @@index([ipAddress])

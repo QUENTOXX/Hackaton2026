@@ -16,6 +16,7 @@ import { useScreenshotGuard } from '@/hooks/use-screenshot-guard'
 import { EV, type JoinAck, type Participant, type RoomState, type ScreenshotAlert } from '@/lib/realtime/socket-events'
 import { HlsPlayer } from '@/components/watch/hls-player'
 import { YouTubePlayer } from '@/components/watch/youtube-player'
+import { ForensicWatermark } from '@/components/watch/forensic-watermark'
 import { getYouTubeId, type PlayerHandle } from '@/components/watch/player-types'
 import { ParticipantsList } from '@/components/watch/participants-list'
 import { Logo } from '@/components/brand/logo'
@@ -24,7 +25,15 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ArrowLeft, Crown, Radio, Wifi, WifiOff, PowerOff, ShieldAlert, Camera } from 'lucide-react'
 
-export function RoomClient({ code, currentUserId }: { code: string; currentUserId: string }) {
+export function RoomClient({
+  code,
+  currentUserId,
+  currentUserEmail,
+}: {
+  code: string
+  currentUserId: string
+  currentUserEmail: string
+}) {
   const router = useRouter()
   const { socket, connected, error } = useSocket()
   const playerRef = useRef<PlayerHandle>(null)
@@ -215,26 +224,32 @@ export function RoomClient({ code, currentUserId }: { code: string; currentUserI
             {room &&
               (() => {
                 const ytId = getYouTubeId(room.videoSrc)
-                return ytId ? (
-                  <YouTubePlayer
-                    ref={playerRef}
-                    videoId={ytId}
-                    isHost={isHost}
-                    onHostPlay={onHostPlay}
-                    onHostPause={onHostPause}
-                    onHostSeek={onHostSeek}
-                    onDuration={onDuration}
-                  />
-                ) : (
-                  <HlsPlayer
-                    ref={playerRef}
-                    src={room.videoSrc}
-                    isHost={isHost}
-                    onHostPlay={onHostPlay}
-                    onHostPause={onHostPause}
-                    onHostSeek={onHostSeek}
-                    onDuration={onDuration}
-                  />
+                return (
+                  // Conteneur relatif : le filigrane forensic se superpose au lecteur.
+                  <div className="relative" onContextMenu={(e) => e.preventDefault()}>
+                    {ytId ? (
+                      <YouTubePlayer
+                        ref={playerRef}
+                        videoId={ytId}
+                        isHost={isHost}
+                        onHostPlay={onHostPlay}
+                        onHostPause={onHostPause}
+                        onHostSeek={onHostSeek}
+                        onDuration={onDuration}
+                      />
+                    ) : (
+                      <HlsPlayer
+                        ref={playerRef}
+                        src={room.videoSrc}
+                        isHost={isHost}
+                        onHostPlay={onHostPlay}
+                        onHostPause={onHostPause}
+                        onHostSeek={onHostSeek}
+                        onDuration={onDuration}
+                      />
+                    )}
+                    <ForensicWatermark label={currentUserEmail} />
+                  </div>
                 )
               })()}
             <Card>

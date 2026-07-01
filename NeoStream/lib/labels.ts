@@ -2,7 +2,7 @@
 // Ce fichier n'importe PAS prisma : il peut être utilisé dans les composants client.
 import {
   ShieldAlert, Wifi, Camera, Ban, LogIn, Info,
-  Radio, LogOut, PowerOff, Crown, Gauge, type LucideIcon,
+  Radio, LogOut, PowerOff, Crown, Gauge, KeyRound, Plane, type LucideIcon,
 } from 'lucide-react'
 
 export const THREAT_LABELS: Record<string, string> = {
@@ -11,6 +11,8 @@ export const THREAT_LABELS: Record<string, string> = {
   SCREENSHOT_ATTEMPT: "Capture d'écran",
   BLOCKED_IP: 'IP bloquée',
   RATE_LIMIT: 'Rate-limit (pare-feu)',
+  BRUTE_FORCE: 'Brute-force login',
+  GEO_VELOCITY: 'Voyage impossible',
   LOGIN: 'Connexion',
   INFO: 'Information',
   // --- Watch Together (événements de salle) ---
@@ -28,6 +30,8 @@ export const THREAT_ICONS: Record<string, LucideIcon> = {
   SCREENSHOT_ATTEMPT: Camera,
   BLOCKED_IP: Ban,
   RATE_LIMIT: Gauge,
+  BRUTE_FORCE: KeyRound,
+  GEO_VELOCITY: Plane,
   LOGIN: LogIn,
   INFO: Info,
   // --- Watch Together ---

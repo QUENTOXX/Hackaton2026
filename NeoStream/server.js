@@ -41,6 +41,20 @@ const handle = app.getRequestHandler()
 
 const num = (v) => (typeof v === 'number' && isFinite(v) ? v : 0)
 
+// Rate-limit par socket et par catégorie d'événement (anti-spam temps réel).
+// Empêche un invité (ou un hôte compromis) d'inonder le serveur d'events.
+function socketRateLimited(socket, key, max, windowMs) {
+  const now = Date.now()
+  socket.data.rl = socket.data.rl || {}
+  let b = socket.data.rl[key]
+  if (!b || now > b.resetAt) {
+    b = { count: 0, resetAt: now + windowMs }
+    socket.data.rl[key] = b
+  }
+  b.count++
+  return b.count > max
+}
+
 // Déduit un type d'appareil grossier depuis le user-agent (pour la télémétrie Pôle 3).
 function deviceFromUA(ua = '') {
   const s = String(ua).toLowerCase()
@@ -232,6 +246,7 @@ app.prepare().then(() => {
     socket.on('presenter:play', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room)) return
+      if (socketRateLimited(socket, 'presenter', 40, 5_000)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: 'playing', positionSec: num(positionSec), updatedAt: Date.now() }
       socket.to(room.code).emit('sync:play', { positionSec: room.playback.positionSec })
@@ -241,6 +256,7 @@ app.prepare().then(() => {
     socket.on('presenter:pause', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room)) return
+      if (socketRateLimited(socket, 'presenter', 40, 5_000)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: 'paused', positionSec: num(positionSec), updatedAt: Date.now() }
       socket.to(room.code).emit('sync:pause', { positionSec: room.playback.positionSec })
@@ -250,6 +266,7 @@ app.prepare().then(() => {
     socket.on('presenter:seek', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!isHost(room)) return
+      if (socketRateLimited(socket, 'presenter', 40, 5_000)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: room.playback.state, positionSec: num(positionSec), updatedAt: Date.now() }
       socket.to(room.code).emit('sync:seek', { positionSec: room.playback.positionSec })
@@ -282,6 +299,7 @@ app.prepare().then(() => {
     socket.on('screenshot:attempt', ({ method } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
       if (!room) return
+      if (socketRateLimited(socket, 'screenshot', 5, 10_000)) return
       const m = String(method || 'inconnue')
       logScreenshotAttempt(room, user.id, displayName, m)
       // Alerte live au présentateur (sauf s'il est lui-même l'auteur).

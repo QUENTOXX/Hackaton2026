@@ -33,6 +33,8 @@ export interface IpReputation {
   country: string
   city: string
   location: string
+  lat: number | null  // coordonnées (pour le geo-velocity)
+  lon: number | null
   isp: string
   org: string
   proxy: boolean      // VPN / proxy détecté
@@ -42,11 +44,23 @@ export interface IpReputation {
   reason: string
 }
 
+// Distance en km entre deux points géographiques (formule de haversine).
+export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // rayon terrestre (km)
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)))
+}
+
 // Interroge ip-api.com pour obtenir la réputation et la géolocalisation d'une IP.
 // Si l'IP est privée/locale, on interroge l'IP publique du serveur (utile en local).
 export async function checkIpReputation(ip: string): Promise<IpReputation> {
   const fields =
-    'status,message,country,countryCode,regionName,city,isp,org,as,mobile,proxy,hosting,query'
+    'status,message,country,countryCode,regionName,city,lat,lon,isp,org,as,mobile,proxy,hosting,query'
 
   // En local, ip-api ne peut pas analyser une IP privée -> on teste l'IP publique sortante
   const target = isPrivateIp(ip) ? '' : ip
@@ -63,6 +77,8 @@ export async function checkIpReputation(ip: string): Promise<IpReputation> {
         country: 'Inconnu',
         city: 'Inconnu',
         location: 'Localisation inconnue',
+        lat: null,
+        lon: null,
         isp: 'Inconnu',
         org: '',
         proxy: false,
@@ -85,6 +101,8 @@ export async function checkIpReputation(ip: string): Promise<IpReputation> {
       country: data?.country ?? 'Inconnu',
       city: data?.city ?? 'Inconnu',
       location: `${data?.city ?? 'Inconnu'}, ${data?.country ?? 'Inconnu'}`,
+      lat: typeof data?.lat === 'number' ? data.lat : null,
+      lon: typeof data?.lon === 'number' ? data.lon : null,
       isp: data?.isp ?? 'Inconnu',
       org: data?.org ?? '',
       proxy,
@@ -100,6 +118,8 @@ export async function checkIpReputation(ip: string): Promise<IpReputation> {
       country: 'Inconnu',
       city: 'Inconnu',
       location: 'Localisation inconnue',
+      lat: null,
+      lon: null,
       isp: 'Inconnu',
       org: '',
       proxy: false,
