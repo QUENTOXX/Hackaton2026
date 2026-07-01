@@ -15,12 +15,12 @@ import { logSecurityEvent } from '@/lib/security'
 
 export const dynamic = 'force-dynamic'
 
-// Quelques IP réalistes pour la démo
+// Quelques IP réalistes pour la démo (avec coordonnées -> carte des menaces)
 const DEMO_IPS = [
-  { ip: '185.220.101.1', loc: 'Berlin, Allemagne' }, // nœud Tor connu
-  { ip: '45.83.91.10', loc: 'Amsterdam, Pays-Bas' },
-  { ip: '104.16.0.1', loc: 'San Francisco, États-Unis' },
-  { ip: '51.158.1.1', loc: 'Paris, France' },
+  { ip: '185.220.101.1', loc: 'Berlin, Allemagne', lat: 52.52, lon: 13.4 }, // nœud Tor connu
+  { ip: '45.83.91.10', loc: 'Amsterdam, Pays-Bas', lat: 52.37, lon: 4.9 },
+  { ip: '104.16.0.1', loc: 'San Francisco, États-Unis', lat: 37.77, lon: -122.42 },
+  { ip: '51.158.1.1', loc: 'Paris, France', lat: 48.85, lon: 2.35 },
 ]
 
 export async function POST(req: NextRequest) {
@@ -52,6 +52,8 @@ export async function POST(req: NextRequest) {
           userId: demoUser.id,
           ipAddress: s.ip,
           location: s.loc,
+          latitude: s.lat,
+          longitude: s.lon,
           device: 'Ordinateur (Chrome)',
           isActive: true,
           isFlagged: true,
@@ -78,6 +80,8 @@ export async function POST(req: NextRequest) {
         userId: demoUser.id,
         ipAddress: s.ip,
         location: rep.location || s.loc,
+        latitude: rep.lat ?? s.lat,
+        longitude: rep.lon ?? s.lon,
         device: 'Ordinateur (Firefox)',
         isActive: true,
         isFlagged: true,

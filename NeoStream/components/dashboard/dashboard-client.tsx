@@ -21,6 +21,7 @@ import { AllowedIpsManager, type AllowedIpItem } from './allowed-ips-manager'
 import { LogsTable } from './logs-table'
 import { SimulatorPanel } from './simulator-panel'
 import { UsersManager } from './users-manager'
+import { ThreatMap } from './threat-map'
 import { THREAT_LABELS } from '@/lib/labels'
 import { LogOut, Lock, PieChart as PieIcon, BarChart3, RefreshCw, Radio, LineChart } from 'lucide-react'
 
@@ -237,6 +238,7 @@ export function DashboardClient({ email, name }: { email: string; name: string |
                 <CardContent><TimelineChart data={stats?.timeline ?? []} /></CardContent>
               </Card>
             </div>
+            <ThreatMap sessions={sessions} />
             <div className="grid gap-4 lg:grid-cols-2">
               <AlertsFeed logs={logs} />
               <SessionsTable sessions={sessions} onBlock={(ip) => handleBlock(ip)} />

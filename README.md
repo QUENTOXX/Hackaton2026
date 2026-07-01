@@ -7,7 +7,7 @@ Ce dépôt contient **NeoStream**, la plateforme vidéo sécurisée (dossier [`N
 - **SentinelGuard** (Pôle 2) : le module sécurité/admin — authentification, détection anti-fraude et dashboard de supervision.
 - **Analyse d'audience** (Pôle 3 · Sujet B) : dashboard Streamlit + modèle scikit-learn (zones d'ennui & prédiction de rétention), alimenté par la télémétrie réelle de Watch Together.
 
-Documentation : [documentation/SUJET-HACKATHON.md](documentation/SUJET-HACKATHON.md) · [documentation/WATCH-TOGETHER-PLAN.md](documentation/WATCH-TOGETHER-PLAN.md) · [documentation/](documentation)
+Documentation : [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) (modèle de menace) · [DEMO.md](DEMO.md) (runbook de soutenance) · [documentation/SUJET-HACKATHON.md](documentation/SUJET-HACKATHON.md) · [documentation/WATCH-TOGETHER-PLAN.md](documentation/WATCH-TOGETHER-PLAN.md)
 
 ---
 

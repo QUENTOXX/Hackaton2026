@@ -25,6 +25,8 @@ export async function GET() {
       id: s.id,
       ipAddress: s.ipAddress,
       location: s.location,
+      latitude: s.latitude,
+      longitude: s.longitude,
       device: s.device,
       isFlagged: s.isFlagged,
       userEmail: s.user?.email ?? 'inconnu',

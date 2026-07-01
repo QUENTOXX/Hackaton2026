@@ -11,8 +11,10 @@ export interface SessionItem {
   id: string
   ipAddress: string
   location: string | null
-  device: string | null
+  latitude: number | null
+  longitude: number | null
   isFlagged: boolean
+  device: string | null
   userEmail: string
   userName: string | null
   createdAt: string
