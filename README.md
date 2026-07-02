@@ -7,7 +7,7 @@ Ce dépôt contient **NeoStream**, la plateforme vidéo sécurisée (dossier [`N
 - **SentinelGuard** (Pôle 2) : le module sécurité/admin — authentification, détection anti-fraude et dashboard de supervision.
 - **Analyse d'audience** (Pôle 3 · Sujet B) : dashboard Streamlit + modèle scikit-learn (zones d'ennui & prédiction de rétention), alimenté par la télémétrie réelle de Watch Together.
 
-Documentation : [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) (modèle de menace) · [DEMO.md](DEMO.md) (runbook de soutenance) · [documentation/SUJET-HACKATHON.md](documentation/SUJET-HACKATHON.md) · [documentation/WATCH-TOGETHER-PLAN.md](documentation/WATCH-TOGETHER-PLAN.md)
+Documentation : [ARCHITECTURE.md](ARCHITECTURE.md) · [SECURITY.md](SECURITY.md) (modèle de menace) · [documentation/SUJET-HACKATHON.md](documentation/SUJET-HACKATHON.md) · [documentation/WATCH-TOGETHER-PLAN.md](documentation/WATCH-TOGETHER-PLAN.md)
 
 ---
 
@@ -145,9 +145,11 @@ npm run dev
    - **YouTube** : coller un lien `youtube.com/watch?v=…` ou `youtu.be/…`.
    > Pour la démo, privilégier **mp4** : `mkv`/`avi` ne sont pas lus nativement par tous les navigateurs.
 3. **Rejoindre** : un invité entre le code ; son lecteur suit automatiquement le présentateur.
-4. **Historique** (`/watch/history`) : sessions terminées, durée et temps de présence des participants.
+4. **Changer la vidéo en cours de session** : le présentateur clique **« Changer la vidéo »** (en-tête de la salle) → même sélecteur qu'à la création (vidéo locale / import / lien) → la nouvelle source est diffusée à tous.
+5. **Collaboration (co-présentateurs)** : dans la liste **Participants**, le présentateur peut **« Autoriser »** un invité à piloter (play/pause/seek synchronisés pour toute la salle), puis **« Retirer »** ce droit. Changer la vidéo et terminer la salle restent réservés à l'hôte.
+6. **Historique** (`/watch/history`) : sessions terminées, durée et temps de présence des participants.
 
-**Comportements automatiques** : transfert d'hôte après 60 s de déconnexion du présentateur ; fermeture de la salle après 10 min d'inactivité.
+**Comportements automatiques** : transfert d'hôte après 60 s de déconnexion du présentateur ; fermeture de la salle après 10 min d'inactivité ; un co-présentateur perd ses droits s'il quitte la salle.
 
 ---
 

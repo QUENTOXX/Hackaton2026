@@ -109,6 +109,14 @@ function logScreenshotAttempt(room, userId, name, method) {
     .catch((e) => console.error('[log] screenshot', e.message))
 }
 
+// Nom d'affichage d'un participant à partir de son userId (repli : l'id).
+function participantName(room, userId) {
+  for (const p of room.participants.values()) {
+    if (p.userId === userId) return p.name
+  }
+  return userId
+}
+
 function endRoom(io, room, reason = 'host') {
   if (room.hostGraceTimer) {
     clearTimeout(room.hostGraceTimer)
@@ -172,6 +180,8 @@ app.prepare().then(() => {
     console.log(`[socket] + ${user.email} (${user.role}) — ${socket.id}`)
 
     const isHost = (room) => room && room.hostId === user.id
+    // Peut piloter la lecture : hôte OU co-présentateur autorisé.
+    const mayControl = (room) => store.canControl(room, user.id)
 
     // --- Diagnostic (J0) : ping authentifié -> pong ---
     socket.on('ping:test', (payload, ack) => {
@@ -230,6 +240,7 @@ app.prepare().then(() => {
           isHost: isHost(room),
           playback: { state: room.playback.state, positionSec: store.currentPosition(room) },
           participants: store.participantList(room),
+          controllers: store.controllerList(room),
         }
         if (ack) ack({ ok: true, state })
         io.to(code).emit('room:participants', store.participantList(room))
@@ -245,7 +256,7 @@ app.prepare().then(() => {
     // --- Commandes du présentateur (autorité serveur) ---
     socket.on('presenter:play', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
-      if (!isHost(room)) return
+      if (!mayControl(room)) return
       if (socketRateLimited(socket, 'presenter', 40, 5_000)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: 'playing', positionSec: num(positionSec), updatedAt: Date.now() }
@@ -255,7 +266,7 @@ app.prepare().then(() => {
 
     socket.on('presenter:pause', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
-      if (!isHost(room)) return
+      if (!mayControl(room)) return
       if (socketRateLimited(socket, 'presenter', 40, 5_000)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: 'paused', positionSec: num(positionSec), updatedAt: Date.now() }
@@ -265,7 +276,7 @@ app.prepare().then(() => {
 
     socket.on('presenter:seek', ({ positionSec, rate } = {}) => {
       const room = store.getRoom(socket.data.roomCode)
-      if (!isHost(room)) return
+      if (!mayControl(room)) return
       if (socketRateLimited(socket, 'presenter', 40, 5_000)) return
       room.lastActivityAt = Date.now()
       room.playback = { state: room.playback.state, positionSec: num(positionSec), updatedAt: Date.now() }
@@ -280,6 +291,26 @@ app.prepare().then(() => {
       room.durationSec = null // nouvelle vidéo -> la durée sera re-remontée par le lecteur
       room.playback = { state: 'paused', positionSec: 0, updatedAt: Date.now() }
       io.to(room.code).emit('room:videoChanged', { videoSrc: room.videoSrc })
+    })
+
+    // --- Attribution / retrait des droits de pilotage (hôte uniquement) ---
+    socket.on('presenter:grantControl', ({ userId } = {}) => {
+      const room = store.getRoom(socket.data.roomCode)
+      if (!isHost(room) || !userId || userId === room.hostId) return
+      if (!store.userStillConnected(room, userId)) return // l'invité doit être présent
+      room.controllers.add(userId)
+      const name = participantName(room, userId)
+      io.to(room.code).emit('room:controllers', store.controllerList(room))
+      logRoomEvent(room, userId, 'ROOM_CONTROL_GRANTED', `${name} a reçu les droits de pilotage dans ${room.code}`)
+    })
+
+    socket.on('presenter:revokeControl', ({ userId } = {}) => {
+      const room = store.getRoom(socket.data.roomCode)
+      if (!isHost(room) || !userId) return
+      room.controllers.delete(userId)
+      const name = participantName(room, userId)
+      io.to(room.code).emit('room:controllers', store.controllerList(room))
+      logRoomEvent(room, userId, 'ROOM_CONTROL_REVOKED', `${name} n'a plus les droits de pilotage dans ${room.code}`)
     })
 
     // --- Durée totale de la vidéo, remontée par le lecteur de l'hôte ---
@@ -341,6 +372,11 @@ app.prepare().then(() => {
 
       room.participants.delete(socket.id)
       io.to(code).emit('room:participants', store.participantList(room))
+      // Si l'utilisateur n'a plus aucun socket dans la salle, il perd ses droits de pilotage.
+      if (room.controllers.has(user.id) && !store.userStillConnected(room, user.id)) {
+        room.controllers.delete(user.id)
+        io.to(code).emit('room:controllers', store.controllerList(room))
+      }
       logRoomEvent(room, user.id, 'ROOM_LEAVE', `${displayName} a quitté la salle ${code}`)
       recordPlayback(room, user.id, 'LEAVE', store.currentPosition(room), { device: socket.data.device })
 
@@ -352,8 +388,10 @@ app.prepare().then(() => {
           const nextHost = store.oldestGuest(room, room.hostId)
           if (nextHost) {
             room.hostId = nextHost.userId
+            room.controllers.delete(nextHost.userId) // le nouvel hôte n'a plus besoin d'un droit séparé
             io.to(code).emit('room:hostChanged', { hostId: nextHost.userId, hostName: nextHost.name })
             io.to(code).emit('room:participants', store.participantList(room))
+            io.to(code).emit('room:controllers', store.controllerList(room))
             logRoomEvent(room, nextHost.userId, 'ROOM_HOST_CHANGED', `${nextHost.name} devient présentateur de ${code}`)
           } else {
             endRoom(io, room, 'empty')

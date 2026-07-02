@@ -17,11 +17,12 @@ import type { PlayerHandle } from './player-types'
 
 interface YouTubePlayerProps {
   videoId: string
-  isHost: boolean
+  /** L'utilisateur peut piloter la lecture (hôte OU co-présentateur). */
+  canControl: boolean
   onHostPlay?: (positionSec: number, rate?: number) => void
   onHostPause?: (positionSec: number, rate?: number) => void
   onHostSeek?: (positionSec: number, rate?: number) => void
-  /** Remonte la durée totale de la vidéo (hôte uniquement), pour la télémétrie. */
+  /** Remonte la durée totale de la vidéo, pour la télémétrie. */
   onDuration?: (durationSec: number) => void
 }
 
@@ -49,7 +50,7 @@ function loadYouTubeAPI(): Promise<void> {
 }
 
 export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(function YouTubePlayer(
-  { videoId, isHost, onHostPlay, onHostPause, onHostSeek, onDuration },
+  { videoId, canControl, onHostPlay, onHostPause, onHostSeek, onDuration },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -80,7 +81,7 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
         if (Math.abs(cur - cmd.pos) > SYNC_TOLERANCE) p.seekTo(cmd.pos, true)
         p.playVideo?.()
         // Invité : si l'autoplay AVEC son est bloqué, on repli en sourdine.
-        if (!isHost) {
+        if (!canControl) {
           window.setTimeout(() => {
             const st = playerRef.current?.getPlayerState?.() // 1=playing, 3=buffering
             if (st !== 1 && st !== 3) {
@@ -121,8 +122,8 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
         width: '100%',
         height: '100%',
         playerVars: {
-          controls: isHost ? 1 : 0,
-          disablekb: isHost ? 0 : 1,
+          controls: canControl ? 1 : 0,
+          disablekb: canControl ? 0 : 1,
           modestbranding: 1,
           rel: 0,
           playsinline: 1,
@@ -137,7 +138,7 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
             }
             // Durée totale : getDuration() peut renvoyer 0 tant que la vidéo n'a
             // pas commencé à charger -> on ré-essaie quelques fois (hôte only).
-            if (isHost) {
+            if (canControl) {
               let tries = 0
               const poll = window.setInterval(() => {
                 const d = playerRef.current?.getDuration?.() ?? 0
@@ -152,7 +153,7 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
           },
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onStateChange: (e: any) => {
-            if (!isHost || suppress.current) return
+            if (!canControl || suppress.current) return
             const t = playerRef.current?.getCurrentTime?.() ?? 0
             const rate = playerRef.current?.getPlaybackRate?.() ?? 1
             if (e.data === YT.PlayerState.PLAYING) onHostPlay?.(t, rate)
@@ -172,11 +173,11 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
       ready.current = false
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoId, isHost])
+  }, [videoId, canControl])
 
   // Détection du seek de l'hôte par échantillonnage (pas d'event natif).
   useEffect(() => {
-    if (!isHost) return
+    if (!canControl) return
     const id = window.setInterval(() => {
       const p = playerRef.current
       if (!p || !ready.current || suppress.current) return
@@ -187,7 +188,7 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
       lastTime.current = t
     }, 1000)
     return () => window.clearInterval(id)
-  }, [isHost, onHostSeek])
+  }, [canControl, onHostSeek])
 
   useImperativeHandle(ref, () => ({
     applyPlay: (pos) => apply({ type: 'play', pos }),
@@ -211,7 +212,7 @@ export const YouTubePlayer = forwardRef<PlayerHandle, YouTubePlayerProps>(functi
       <div className="aspect-video w-full">
         <div ref={containerRef} className="h-full w-full" />
       </div>
-      {!isHost && (
+      {!canControl && (
         <>
           {/* Bloque toute interaction de l'invité avec le lecteur YouTube. */}
           <div className="absolute inset-0" />

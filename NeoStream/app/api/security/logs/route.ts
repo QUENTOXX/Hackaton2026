@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const type = searchParams.get('type')
 
   // Le filtre "WATCH" regroupe tous les événements de salle Watch Together.
-  const ROOM_TYPES = ['ROOM_CREATED', 'ROOM_JOIN', 'ROOM_LEAVE', 'ROOM_ENDED', 'ROOM_HOST_CHANGED']
+  const ROOM_TYPES = ['ROOM_CREATED', 'ROOM_JOIN', 'ROOM_LEAVE', 'ROOM_ENDED', 'ROOM_HOST_CHANGED', 'ROOM_CONTROL_GRANTED', 'ROOM_CONTROL_REVOKED']
   const where =
     !type || type === 'ALL'
       ? undefined

@@ -17,13 +17,14 @@ import { EV, type JoinAck, type Participant, type RoomState, type ScreenshotAler
 import { HlsPlayer } from '@/components/watch/hls-player'
 import { YouTubePlayer } from '@/components/watch/youtube-player'
 import { ForensicWatermark } from '@/components/watch/forensic-watermark'
+import { ChangeVideoDialog } from '@/components/watch/change-video-dialog'
 import { getYouTubeId, type PlayerHandle } from '@/components/watch/player-types'
 import { ParticipantsList } from '@/components/watch/participants-list'
 import { Logo } from '@/components/brand/logo'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { ArrowLeft, Crown, Radio, Wifi, WifiOff, PowerOff, ShieldAlert, Camera } from 'lucide-react'
+import { ArrowLeft, Crown, Radio, Wifi, WifiOff, PowerOff, ShieldAlert, Camera, Film, Gamepad2 } from 'lucide-react'
 
 export function RoomClient({
   code,
@@ -44,6 +45,12 @@ export function RoomClient({
   const [notFound, setNotFound] = useState(false)
   const [hostNotice, setHostNotice] = useState<string | null>(null)
   const [screenshotAlerts, setScreenshotAlerts] = useState<ScreenshotAlert[]>([])
+  const [controllers, setControllers] = useState<string[]>([])
+  const [changeVideoOpen, setChangeVideoOpen] = useState(false)
+  const wasController = useRef(false)
+
+  // L'utilisateur peut piloter la lecture : hôte OU co-présentateur autorisé.
+  const isController = isHost || controllers.includes(currentUserId)
 
   // Applique un état de lecture initial (join / join tardif).
   const applyInitial = useCallback((state: RoomState) => {
@@ -65,10 +72,23 @@ export function RoomClient({
       setRoom(res.state)
       setParticipants(res.state.participants)
       setIsHost(res.state.isHost)
+      setControllers(res.state.controllers ?? [])
+      wasController.current = (res.state.controllers ?? []).includes(currentUserId)
       applyInitial(res.state)
     })
 
     const onParticipants = (list: Participant[]) => setParticipants(list)
+    const onControllers = (list: string[]) => {
+      setControllers(list)
+      const now = list.includes(currentUserId)
+      // L'hôte n'est jamais dans la liste -> pas de toast pour lui.
+      if (now !== wasController.current) {
+        toast[now ? 'success' : 'info'](
+          now ? 'Le présentateur vous a donné les droits de pilotage.' : 'Vos droits de pilotage ont été retirés.',
+        )
+      }
+      wasController.current = now
+    }
     const onPlay = ({ positionSec }: { positionSec: number }) => playerRef.current?.applyPlay(positionSec)
     const onPause = ({ positionSec }: { positionSec: number }) => playerRef.current?.applyPause(positionSec)
     const onSeek = ({ positionSec }: { positionSec: number }) => playerRef.current?.applySeek(positionSec)
@@ -103,6 +123,7 @@ export function RoomClient({
     }
 
     socket.on(EV.ROOM_PARTICIPANTS, onParticipants)
+    socket.on(EV.ROOM_CONTROLLERS, onControllers)
     socket.on(EV.SYNC_PLAY, onPlay)
     socket.on(EV.SYNC_PAUSE, onPause)
     socket.on(EV.SYNC_SEEK, onSeek)
@@ -115,6 +136,7 @@ export function RoomClient({
 
     return () => {
       socket.off(EV.ROOM_PARTICIPANTS, onParticipants)
+      socket.off(EV.ROOM_CONTROLLERS, onControllers)
       socket.off(EV.SYNC_PLAY, onPlay)
       socket.off(EV.SYNC_PAUSE, onPause)
       socket.off(EV.SYNC_SEEK, onSeek)
@@ -133,6 +155,11 @@ export function RoomClient({
   const onHostSeek = (positionSec: number, rate?: number) => socket?.emit(EV.PRESENTER_SEEK, { positionSec, rate })
   // Durée totale de la vidéo, remontée une fois par le lecteur de l'hôte (télémétrie Pôle 3).
   const onDuration = (durationSec: number) => socket?.emit(EV.PRESENTER_DURATION, { durationSec })
+
+  // --- Actions réservées à l'hôte ---
+  const changeVideo = (src: string) => socket?.emit(EV.PRESENTER_LOAD, { videoSrc: src })
+  const toggleControl = (userId: string, next: boolean) =>
+    socket?.emit(next ? EV.PRESENTER_GRANT : EV.PRESENTER_REVOKE, { userId })
 
   // --- Surveillance capture d'écran : toast local + remontée au serveur ---
   const reportScreenshot = useCallback(
@@ -181,8 +208,15 @@ export function RoomClient({
             )}
             {isHost ? (
               <Badge className="gap-1 bg-yellow-500/20 text-yellow-300"><Crown className="h-3 w-3" /> présentateur</Badge>
+            ) : isController ? (
+              <Badge className="gap-1 bg-emerald-500/20 text-emerald-300"><Gamepad2 className="h-3 w-3" /> co-présentateur</Badge>
             ) : (
               <Badge variant="outline">invité</Badge>
+            )}
+            {isHost && (
+              <Button variant="outline" size="sm" onClick={() => setChangeVideoOpen(true)}>
+                <Film className="mr-2 h-4 w-4" /> Changer la vidéo
+              </Button>
             )}
             {isHost && (
               <Button variant="destructive" size="sm" onClick={endSession}>
@@ -231,7 +265,7 @@ export function RoomClient({
                       <YouTubePlayer
                         ref={playerRef}
                         videoId={ytId}
-                        isHost={isHost}
+                        canControl={isController}
                         onHostPlay={onHostPlay}
                         onHostPause={onHostPause}
                         onHostSeek={onHostSeek}
@@ -241,7 +275,7 @@ export function RoomClient({
                       <HlsPlayer
                         ref={playerRef}
                         src={room.videoSrc}
-                        isHost={isHost}
+                        canControl={isController}
                         onHostPlay={onHostPlay}
                         onHostPause={onHostPause}
                         onHostSeek={onHostSeek}
@@ -255,19 +289,27 @@ export function RoomClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-base">
-                  {isHost ? 'Vous pilotez la lecture' : 'Lecture synchronisée'}
+                  {isController ? 'Vous pilotez la lecture' : 'Lecture synchronisée'}
                 </CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
                 {isHost
-                  ? 'Utilisez les contrôles du lecteur : lecture, pause et déplacement sont répercutés en temps réel sur tous les invités.'
-                  : 'Votre lecteur suit automatiquement le présentateur. Les contrôles sont volontairement désactivés.'}
+                  ? 'Utilisez les contrôles du lecteur : lecture, pause et déplacement sont répercutés en temps réel sur tous les invités. Vous pouvez aussi changer la vidéo ou donner les droits de pilotage à un invité.'
+                  : isController
+                    ? 'Le présentateur vous a autorisé à piloter : vos actions (lecture, pause, déplacement) sont synchronisées avec tout le monde.'
+                    : 'Votre lecteur suit automatiquement le présentateur. Les contrôles sont volontairement désactivés.'}
               </CardContent>
             </Card>
           </div>
 
           <div className="space-y-4">
-            <ParticipantsList participants={participants} currentUserId={currentUserId} />
+            <ParticipantsList
+              participants={participants}
+              currentUserId={currentUserId}
+              controllers={controllers}
+              canManage={isHost}
+              onToggleControl={toggleControl}
+            />
 
             {/* Panneau sécurité : surveillance des captures d'écran */}
             <Card>
@@ -320,6 +362,10 @@ export function RoomClient({
           </div>
         </div>
       </div>
+
+      {isHost && (
+        <ChangeVideoDialog open={changeVideoOpen} onOpenChange={setChangeVideoOpen} onConfirm={changeVideo} />
+      )}
     </main>
   )
 }

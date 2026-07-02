@@ -42,12 +42,24 @@ function createRoomInMemory({ code, roomId, name, hostId, videoSrc, durationSec 
     durationSec, // durée totale de la vidéo (remontée par le lecteur de l'hôte), pour la télémétrie
     playback: { state: 'paused', positionSec: 0, updatedAt: Date.now() },
     participants: new Map(),
+    controllers: new Set(), // userIds d'invités autorisés à piloter (co-présentateurs)
     hostSocketId: null,
     hostGraceTimer: null,
     lastActivityAt: Date.now(), // pour la fermeture auto sur inactivité
   }
   rooms.set(code, room)
   return room
+}
+
+/** userIds des co-présentateurs encore présents dans la salle. */
+function controllerList(room) {
+  if (!room.controllers) return []
+  return Array.from(room.controllers).filter((uid) => userStillConnected(room, uid))
+}
+
+/** L'utilisateur peut-il piloter la lecture ? (hôte OU co-présentateur) */
+function canControl(room, userId) {
+  return !!room && (room.hostId === userId || (room.controllers && room.controllers.has(userId)))
 }
 
 /** Position de lecture réelle à l'instant présent (extrapolée si en lecture). */
@@ -99,6 +111,8 @@ module.exports = {
   createRoomInMemory,
   currentPosition,
   participantList,
+  controllerList,
+  canControl,
   oldestGuest,
   userStillConnected,
 }

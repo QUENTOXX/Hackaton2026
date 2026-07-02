@@ -22,6 +22,8 @@ export const THREAT_LABELS: Record<string, string> = {
   ROOM_LEAVE: 'Sortie de salle',
   ROOM_ENDED: 'Salle terminée',
   ROOM_HOST_CHANGED: 'Changement de présentateur',
+  ROOM_CONTROL_GRANTED: 'Droits de pilotage accordés',
+  ROOM_CONTROL_REVOKED: 'Droits de pilotage retirés',
 }
 
 export const THREAT_ICONS: Record<string, LucideIcon> = {
@@ -41,6 +43,8 @@ export const THREAT_ICONS: Record<string, LucideIcon> = {
   ROOM_LEAVE: LogOut,
   ROOM_ENDED: PowerOff,
   ROOM_HOST_CHANGED: Crown,
+  ROOM_CONTROL_GRANTED: Crown,
+  ROOM_CONTROL_REVOKED: Crown,
 }
 
 export const SEVERITY_LABELS: Record<string, string> = {

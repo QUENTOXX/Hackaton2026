@@ -33,6 +33,7 @@ export interface RoomState {
   isHost: boolean
   playback: PlaybackState
   participants: Participant[]
+  controllers: string[] // userIds des co-présentateurs autorisés à piloter
 }
 
 /** Réponse de l'ACK `room:join`. */
@@ -53,12 +54,15 @@ export const EV = {
   PRESENTER_LOAD: 'presenter:loadVideo',
   PRESENTER_END: 'presenter:endRoom',
   PRESENTER_DURATION: 'presenter:duration',
+  PRESENTER_GRANT: 'presenter:grantControl',
+  PRESENTER_REVOKE: 'presenter:revokeControl',
   SCREENSHOT_ATTEMPT: 'screenshot:attempt',
   // --- serveur -> client ---
   SYNC_PLAY: 'sync:play',
   SYNC_PAUSE: 'sync:pause',
   SYNC_SEEK: 'sync:seek',
   ROOM_PARTICIPANTS: 'room:participants',
+  ROOM_CONTROLLERS: 'room:controllers',
   ROOM_HOST_DISCONNECTED: 'room:hostDisconnected',
   ROOM_HOST_RECONNECTED: 'room:hostReconnected',
   ROOM_HOST_CHANGED: 'room:hostChanged',
